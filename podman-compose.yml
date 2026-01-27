@@ -38,6 +38,9 @@ services:
     depends_on:
       - postgrest
 
+  # To access from other devices on your LAN (e.g. phone) when using Podman
+  # with user-mode networking on macOS, you need socat to forward ports from
+  # your LAN IP to localhost. See README.md for details.
   ws-sidecar:
     build:
       context: ./ws-sidecar
