@@ -6,15 +6,21 @@ const PG_URI =
   "postgres://claude_lists:claude_lists@db:5432/claude_lists";
 
 const WS_PORT = Number(process.env.WS_PORT) || 9000;
+const RECONNECT_DELAY = 3000;
 
-async function main() {
+const wss = new WebSocketServer({ port: WS_PORT });
+console.log(`WebSocket server running on port ${WS_PORT}`);
+
+function connectPG() {
   const pg = new Client({ connectionString: PG_URI });
-  await pg.connect();
-  await pg.query("LISTEN items_changed");
-  console.log("Listening on Postgres channel: items_changed");
 
-  const wss = new WebSocketServer({ port: WS_PORT });
-  console.log(`WebSocket server running on port ${WS_PORT}`);
+  pg.connect()
+    .then(() => pg.query("LISTEN items_changed"))
+    .then(() => console.log("Listening on Postgres channel: items_changed"))
+    .catch((err) => {
+      console.error("Postgres connect failed, retrying:", err.message);
+      setTimeout(connectPG, RECONNECT_DELAY);
+    });
 
   pg.on("notification", (msg) => {
     const payload = msg.payload;
@@ -27,12 +33,10 @@ async function main() {
   });
 
   pg.on("error", (err) => {
-    console.error("Postgres connection error:", err);
-    process.exit(1);
+    console.error("Postgres connection lost, reconnecting:", err.message);
+    pg.end().catch(() => {});
+    setTimeout(connectPG, RECONNECT_DELAY);
   });
 }
 
-main().catch((err) => {
-  console.error("Failed to start:", err);
-  process.exit(1);
-});
+connectPG();
