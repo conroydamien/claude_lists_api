@@ -7,13 +7,16 @@ actor "Client" as client
 node "Podman Compose" {
     component "Web App\n(port 8080)" as web
     component "PostgREST\n(port 3000)" as postgrest
+    component "WS Sidecar\n(port 9000)" as wssidecar
     database "PostgreSQL 16\n(port 5433)" as db
 
     web --> postgrest : "fetch lists\nand items"
     postgrest --> db : "connects as\nclaude_lists user"
+    db --> wssidecar : "LISTEN/NOTIFY\nitems_changed"
 }
 
 client --> web : "HTTP\nport 8080"
+client --> wssidecar : "WebSocket\nport 9000"
 
 note right of db
   Database: claude_lists
@@ -29,11 +32,19 @@ note bottom of db
     - items (id, list_id FK->lists,
              title, description, done,
              created_at, updated_at)
+  Trigger:
+    - items_changed (AFTER INSERT/
+      UPDATE/DELETE on items)
 end note
 
 note right of postgrest
   Anonymous requests
   use the web_anon role
+end note
+
+note right of wssidecar
+  Broadcasts item changes
+  to connected WebSocket clients
 end note
 
 @enduml

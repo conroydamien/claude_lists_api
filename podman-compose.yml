@@ -38,5 +38,16 @@ services:
     depends_on:
       - postgrest
 
+  ws-sidecar:
+    build:
+      context: ./ws-sidecar
+    container_name: claude-lists-ws
+    ports:
+      - "9000:9000"
+    restart: on-failure
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   claude-lists-data:
