@@ -5,13 +5,15 @@ skinparam componentStyle rectangle
 actor "Client" as client
 
 node "Podman Compose" {
+    component "Web App\n(port 8080)" as web
     component "PostgREST\n(port 3000)" as postgrest
     database "PostgreSQL 16\n(port 5433)" as db
 
+    web --> postgrest : "fetch lists\nand items"
     postgrest --> db : "connects as\nclaude_lists user"
 }
 
-client --> postgrest : "REST API\nGET / POST / DELETE"
+client --> web : "HTTP\nport 8080"
 
 note right of db
   Database: claude_lists

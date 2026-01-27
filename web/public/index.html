@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Lists</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    select {
+      font-size: 1rem;
+      padding: 6px 10px;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background: #f5f5f5;
+    }
+    .done {
+      text-decoration: line-through;
+      color: #999;
+    }
+    #message {
+      color: #666;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>Claude Lists</h1>
+
+  <label for="list-select">Choose a list:</label>
+  <select id="list-select">
+    <option value="">-- Select a list --</option>
+  </select>
+
+  <table id="items-table" hidden>
+    <thead>
+      <tr>
+        <th>Done</th>
+        <th>Title</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody id="items-body"></tbody>
+  </table>
+
+  <p id="message"></p>
+
+  <script>
+    const API = "http://localhost:3000";
+    const listSelect = document.getElementById("list-select");
+    const itemsTable = document.getElementById("items-table");
+    const itemsBody = document.getElementById("items-body");
+    const message = document.getElementById("message");
+
+    // Fetch all lists and populate the dropdown.
+    async function loadLists() {
+      const resp = await fetch(`${API}/lists?order=name`);
+      const lists = await resp.json();
+      lists.forEach((list) => {
+        const opt = document.createElement("option");
+        opt.value = list.id;
+        opt.textContent = list.name;
+        listSelect.appendChild(opt);
+      });
+    }
+
+    // Fetch items for the selected list and render the table.
+    async function loadItems(listId) {
+      itemsBody.innerHTML = "";
+
+      if (!listId) {
+        itemsTable.hidden = true;
+        message.textContent = "";
+        return;
+      }
+
+      const resp = await fetch(`${API}/items?list_id=eq.${listId}&order=id`);
+      const items = await resp.json();
+
+      if (items.length === 0) {
+        itemsTable.hidden = true;
+        message.textContent = "No items in this list.";
+        return;
+      }
+
+      message.textContent = "";
+      itemsTable.hidden = false;
+
+      items.forEach((item) => {
+        const tr = document.createElement("tr");
+        if (item.done) tr.classList.add("done");
+
+        tr.innerHTML = `
+          <td>${item.done ? "✓" : ""}</td>
+          <td>${escapeHtml(item.title)}</td>
+          <td>${escapeHtml(item.description || "")}</td>
+        `;
+        itemsBody.appendChild(tr);
+      });
+    }
+
+    // Prevent XSS when rendering user content.
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    listSelect.addEventListener("change", () => loadItems(listSelect.value));
+    loadLists();
+  </script>
+</body>
+</html>

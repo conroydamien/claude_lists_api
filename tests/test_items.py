@@ -1,11 +1,37 @@
-"""Integration tests for the items endpoint via PostgREST."""
+"""Integration tests for the lists and items endpoints via PostgREST."""
 
 import requests
 
 BASE_URL = "http://localhost:3000"
 
-def test_test():
-    assert(1 == 1)
+
+def test_seed_lists_exist():
+    """Verify that the seed data lists are present."""
+    resp = requests.get(f"{BASE_URL}/lists?order=id")
+    assert resp.status_code == 200
+    lists = resp.json()
+    names = [l["name"] for l in lists]
+    assert "Groceries" in names
+    assert "Project Tasks" in names
+    assert "Books to Read" in names
+
+
+def test_seed_items_exist():
+    """Verify that seed data items are present and linked to the correct lists."""
+    # Get the Groceries list.
+    resp = requests.get(f"{BASE_URL}/lists?name=eq.Groceries")
+    assert resp.status_code == 200
+    groceries = resp.json()[0]
+
+    # Check its items.
+    resp = requests.get(f"{BASE_URL}/items?list_id=eq.{groceries['id']}&order=id")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 3
+    titles = [i["title"] for i in items]
+    assert "Milk" in titles
+    assert "Bread" in titles
+    assert "Eggs" in titles
 
 
 def test_item_lifecycle():

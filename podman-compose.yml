@@ -29,5 +29,14 @@ services:
       db:
         condition: service_healthy
 
+  web:
+    build:
+      context: ./web
+    container_name: claude-lists-web
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgrest
+
 volumes:
   claude-lists-data:
