@@ -31,15 +31,27 @@
     th {
       background: #f5f5f5;
     }
-    .done {
+    .done td:not(:first-child) {
       text-decoration: line-through;
       color: #999;
     }
-    tr {
+    tr:not(.done) {
       cursor: pointer;
     }
-    tr:hover {
+    tr:not(.done):hover {
       background: #f9f9f9;
+    }
+    .undo-btn {
+      background: none;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 2px 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #666;
+    }
+    .undo-btn:hover {
+      background: #eee;
     }
     #message {
       color: #666;
@@ -113,34 +125,38 @@
         const tr = document.createElement("tr");
         if (item.done) tr.classList.add("done");
 
-        tr.innerHTML = `
-          <td>${item.done ? "✓" : ""}</td>
+        if (item.done) {
+          const undoBtn = document.createElement("button");
+          undoBtn.className = "undo-btn";
+          undoBtn.textContent = "undo";
+          undoBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setDone(item.id, false);
+          });
+          const td = document.createElement("td");
+          td.appendChild(undoBtn);
+          tr.appendChild(td);
+        } else {
+          tr.innerHTML = `<td></td>`;
+          tr.addEventListener("click", () => setDone(item.id, true));
+        }
+
+        tr.insertAdjacentHTML("beforeend", `
           <td>${escapeHtml(item.title)}</td>
           <td>${escapeHtml(item.description || "")}</td>
-        `;
+        `);
 
-        // Click a row to toggle its done status via the API.
-        tr.addEventListener("click", () => toggleDone(item.id, item.done, tr));
         itemsBody.appendChild(tr);
       });
     }
 
-    // Toggle the done status of an item via PATCH and update the row.
-    async function toggleDone(itemId, currentDone, tr) {
-      const newDone = !currentDone;
-      const resp = await fetch(`${API}/items?id=eq.${itemId}`, {
+    // Set the done status of an item via PATCH. UI updates via WebSocket.
+    async function setDone(itemId, done) {
+      await fetch(`${API}/items?id=eq.${itemId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ done: newDone }),
+        body: JSON.stringify({ done }),
       });
-
-      if (resp.ok) {
-        tr.classList.toggle("done", newDone);
-        tr.cells[0].textContent = newDone ? "✓" : "";
-        // Update the captured value so subsequent clicks toggle correctly.
-        tr.onclick = null;
-        tr.addEventListener("click", () => toggleDone(itemId, newDone, tr));
-      }
     }
 
     // Prevent XSS when rendering user content.
