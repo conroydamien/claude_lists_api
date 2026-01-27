@@ -1,0 +1,37 @@
+@startuml Claude Lists API Architecture
+
+skinparam componentStyle rectangle
+
+actor "Client" as client
+
+node "Podman Compose" {
+    component "PostgREST\n(port 3000)" as postgrest
+    database "PostgreSQL 16\n(port 5433)" as db
+
+    postgrest --> db : "connects as\nclaude_lists user"
+}
+
+client --> postgrest : "REST API\nGET / POST / DELETE"
+
+note right of db
+  Database: claude_lists
+  Roles:
+    - claude_lists (owner)
+    - web_anon (anonymous CRUD)
+end note
+
+note bottom of db
+  Tables:
+    - lists (id, name, description,
+             created_at, updated_at)
+    - items (id, list_id FK->lists,
+             title, description, done,
+             created_at, updated_at)
+end note
+
+note right of postgrest
+  Anonymous requests
+  use the web_anon role
+end note
+
+@enduml

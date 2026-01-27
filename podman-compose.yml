@@ -1,0 +1,33 @@
+services:
+  db:
+    build:
+      context: ./db
+    container_name: claude-lists-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: claude_lists
+      POSTGRES_PASSWORD: claude_lists
+      POSTGRES_DB: claude_lists
+    volumes:
+      - claude-lists-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U claude_lists"]
+      interval: 10s
+      start_period: 5s
+
+  postgrest:
+    image: docker.io/postgrest/postgrest:v12.2.3
+    container_name: claude-lists-postgrest
+    ports:
+      - "3000:3000"
+    environment:
+      PGRST_DB_URI: postgres://claude_lists:claude_lists@db:5432/claude_lists
+      PGRST_DB_ANON_ROLE: web_anon
+      PGRST_DB_SCHEMAS: public
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  claude-lists-data:
