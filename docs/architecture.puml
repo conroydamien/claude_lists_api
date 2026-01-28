@@ -8,10 +8,12 @@ node "Podman Compose" {
     component "Web App\n(port 8080)" as web
     component "PostgREST\n(port 3000)" as postgrest
     component "WS Sidecar\n(port 9000)" as wssidecar
+    component "Keycloak\n(port 8180)" as keycloak
     component "Seeder\n(one-shot)" as seeder
     database "PostgreSQL 16\n(port 5433)" as db
 
     web --> postgrest : "fetch lists\nand items"
+    web --> keycloak : "OAuth2/OIDC\nlogin flow"
     seeder --> postgrest : "POST seed data\non startup"
     postgrest --> db : "connects as\nclaude_lists user"
     db --> wssidecar : "LISTEN/NOTIFY\nitems_changed,\ncomments_changed"
@@ -19,12 +21,14 @@ node "Podman Compose" {
 
 client --> web : "HTTP\nport 8080"
 client --> wssidecar : "WebSocket\nport 9000"
+client --> keycloak : "login redirect\nport 8180"
 
 note right of db
   Database: claude_lists
   Roles:
     - claude_lists (owner)
     - web_anon (anonymous CRUD)
+    - web_user (authenticated CRUD)
 end note
 
 note bottom of db
@@ -35,8 +39,9 @@ note bottom of db
              title, description, done,
              created_at, updated_at)
     - comments (id, item_id FK->items,
-             author_name, content,
-             created_at)
+             author_id, author_name,
+             content, created_at)
+             RLS: delete own only
   Triggers:
     - items_changed (AFTER INSERT/
       UPDATE/DELETE on items)
@@ -45,8 +50,15 @@ note bottom of db
 end note
 
 note right of postgrest
-  Anonymous requests
-  use the web_anon role
+  JWT validated via JWKS
+  Role from token claim
+end note
+
+note right of keycloak
+  Realm: claude-lists
+  Users: alice, bob, charlie
+  Provides JWT with sub,
+  preferred_username, role
 end note
 
 note right of wssidecar

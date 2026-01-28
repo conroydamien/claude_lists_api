@@ -25,7 +25,11 @@ def test_seed_comments_exist():
 
 
 def test_comment_lifecycle():
-    """Verify the full create -> read -> delete lifecycle for comments."""
+    """Verify the create -> read lifecycle for comments.
+
+    Note: Direct deletion of comments is restricted by RLS to the comment author.
+    Comments without author_id (anonymous) can only be deleted via cascade.
+    """
     # First create a list and item
     resp = requests.post(
         f"{BASE_URL}/lists",
@@ -43,7 +47,7 @@ def test_comment_lifecycle():
     assert resp.status_code == 201
     item_id = resp.json()[0]["id"]
 
-    # Create a comment
+    # Create a comment (without author_id - anonymous)
     resp = requests.post(
         f"{BASE_URL}/comments",
         json={
@@ -58,6 +62,7 @@ def test_comment_lifecycle():
     assert comment["item_id"] == item_id
     assert comment["author_name"] == "TestUser"
     assert comment["content"] == "This is a test comment"
+    assert comment["author_id"] is None  # Anonymous comment
     assert "created_at" in comment
     comment_id = comment["id"]
 
@@ -68,18 +73,24 @@ def test_comment_lifecycle():
     assert len(comments) == 1
     assert comments[0]["content"] == "This is a test comment"
 
-    # Delete the comment
+    # Try to delete the comment - RLS should block this (no author_id match)
     resp = requests.delete(f"{BASE_URL}/comments?id=eq.{comment_id}")
+    assert resp.status_code == 204  # Returns 204 but deletes nothing
+
+    # Comment should still exist (RLS blocked the delete)
+    resp = requests.get(f"{BASE_URL}/comments?id=eq.{comment_id}")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1  # Still there
+
+    # Clean up via cascade: delete item (cascades to comments) and list
+    resp = requests.delete(f"{BASE_URL}/items?id=eq.{item_id}")
     assert resp.status_code == 204
 
-    # Confirm the comment is deleted
+    # Now comment should be gone via cascade
     resp = requests.get(f"{BASE_URL}/comments?id=eq.{comment_id}")
     assert resp.status_code == 200
     assert resp.json() == []
 
-    # Clean up: delete item and list
-    resp = requests.delete(f"{BASE_URL}/items?id=eq.{item_id}")
-    assert resp.status_code == 204
     resp = requests.delete(f"{BASE_URL}/lists?id=eq.{list_id}")
     assert resp.status_code == 204
 

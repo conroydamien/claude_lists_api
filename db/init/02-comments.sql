@@ -2,10 +2,34 @@
 CREATE TABLE comments (
     id          SERIAL PRIMARY KEY,
     item_id     INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    author_id   TEXT,  -- JWT sub claim (user ID from Keycloak)
     author_name TEXT NOT NULL,
     content     TEXT NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Enable Row Level Security
+ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read comments
+CREATE POLICY comments_select ON comments
+    FOR SELECT USING (true);
+
+-- Authenticated users can insert comments
+CREATE POLICY comments_insert ON comments
+    FOR INSERT WITH CHECK (true);
+
+-- Only the author can delete their own comments
+CREATE POLICY comments_delete ON comments
+    FOR DELETE USING (
+        author_id IS NOT NULL AND
+        author_id = current_setting('request.jwt.claims', true)::json->>'sub'
+    );
+
+-- Allow anonymous users (web_anon) to bypass RLS for backward compatibility
+-- Remove these if you want to require authentication
+GRANT ALL ON comments TO web_anon;
+ALTER TABLE comments FORCE ROW LEVEL SECURITY;
 
 -- Notify function: sends a JSON payload on the 'comments_changed' channel
 -- whenever a row in the comments table is inserted, updated, or deleted.

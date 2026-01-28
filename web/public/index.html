@@ -133,6 +133,10 @@
       background: #f5f5f5;
       border-radius: 8px;
     }
+    .chat-message.own {
+      background: #e3f2fd;
+      border-left: 3px solid #2196f3;
+    }
     .chat-message-header {
       display: flex;
       justify-content: space-between;
@@ -205,10 +209,59 @@
       background: #ccc;
       cursor: not-allowed;
     }
+    /* Auth UI styles */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .user-name {
+      font-weight: 500;
+      color: #333;
+    }
+    .auth-btn {
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .auth-btn:hover {
+      background: #f5f5f5;
+    }
+    .auth-btn.login {
+      background: #007bff;
+      color: white;
+      border-color: #007bff;
+    }
+    .auth-btn.login:hover {
+      background: #0056b3;
+    }
+    .login-prompt {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
   </style>
 </head>
 <body>
-  <h1>Claude Lists</h1>
+  <div class="header">
+    <h1>Claude Lists</h1>
+    <div class="user-info" id="user-info">
+      <span class="user-name" id="user-name"></span>
+      <button class="auth-btn" id="auth-btn">Loading...</button>
+    </div>
+  </div>
 
   <label for="list-select">Choose a list:</label>
   <select id="list-select">
@@ -235,7 +288,6 @@
       </div>
       <div class="chat-messages" id="chat-messages"></div>
       <div class="chat-input-area">
-        <input type="text" class="chat-author-input" id="chat-author" placeholder="Your name">
         <div class="chat-input-row">
           <textarea class="chat-content-input" id="chat-content" placeholder="Type a message..." rows="2"></textarea>
           <button class="chat-send-btn" id="chat-send">Send</button>
@@ -246,18 +298,24 @@
 
   <p id="message"></p>
 
-  <script>
+  <script type="module">
+    import Keycloak from "https://cdn.jsdelivr.net/npm/keycloak-js@26.2.0/lib/keycloak.js";
+
     const API = `http://${window.location.hostname}:3000`;
+    const KEYCLOAK_URL = `http://${window.location.hostname}:8180`;
+
     const listSelect = document.getElementById("list-select");
     const itemsTable = document.getElementById("items-table");
     const itemsBody = document.getElementById("items-body");
     const message = document.getElementById("message");
+    const userInfo = document.getElementById("user-info");
+    const userName = document.getElementById("user-name");
+    const authBtn = document.getElementById("auth-btn");
 
     // Chat panel elements
     const chatOverlay = document.getElementById("chat-overlay");
     const chatTitle = document.getElementById("chat-title");
     const chatMessages = document.getElementById("chat-messages");
-    const chatAuthor = document.getElementById("chat-author");
     const chatContent = document.getElementById("chat-content");
     const chatSend = document.getElementById("chat-send");
     const chatClose = document.getElementById("chat-close");
@@ -265,12 +323,79 @@
     // Current item being discussed
     let currentChatItemId = null;
 
-    // Load author name from localStorage
-    chatAuthor.value = localStorage.getItem("chat_author") || "";
+    // Keycloak instance
+    const keycloak = new Keycloak({
+      url: KEYCLOAK_URL,
+      realm: 'claude-lists',
+      clientId: 'claude-lists-web',
+      checkLoginIframe: false
+    });
+
+    // Get auth headers for API requests
+    function authHeaders() {
+      const headers = { "Content-Type": "application/json" };
+      if (keycloak.authenticated) {
+        headers["Authorization"] = `Bearer ${keycloak.token}`;
+      }
+      return headers;
+    }
+
+    // User profile loaded from Keycloak
+    let userProfile = null;
+
+    // Get current user's display name
+    function currentUserName() {
+      if (userProfile) {
+        return userProfile.username || userProfile.firstName || 'User';
+      }
+      if (keycloak.authenticated && keycloak.tokenParsed) {
+        return keycloak.tokenParsed.preferred_username ||
+               keycloak.tokenParsed.name ||
+               keycloak.tokenParsed.sub?.substring(0, 8) ||
+               'User';
+      }
+      return 'Anonymous';
+    }
+
+    // Update UI based on auth state
+    function updateAuthUI() {
+      if (keycloak.authenticated) {
+        userName.textContent = currentUserName();
+        authBtn.textContent = 'Logout';
+        authBtn.className = 'auth-btn';
+        authBtn.onclick = () => keycloak.logout();
+      } else {
+        userName.textContent = '';
+        authBtn.textContent = 'Login';
+        authBtn.className = 'auth-btn login';
+        authBtn.onclick = () => keycloak.login();
+      }
+    }
+
+    // Initialize the app after Keycloak is ready
+    async function initApp() {
+      if (keycloak.authenticated) {
+        try {
+          userProfile = await keycloak.loadUserProfile();
+        } catch (e) {
+          console.warn('Could not load user profile:', e);
+        }
+      }
+      updateAuthUI();
+      loadLists();
+      connectWS();
+
+      // Token refresh
+      setInterval(() => {
+        if (keycloak.authenticated) {
+          keycloak.updateToken(30).catch(() => keycloak.login());
+        }
+      }, 30000);
+    }
 
     // Fetch all lists and populate the dropdown.
     async function loadLists() {
-      const resp = await fetch(`${API}/lists?order=name`);
+      const resp = await fetch(`${API}/lists?order=name`, { headers: authHeaders() });
       const lists = await resp.json();
       lists.forEach((list) => {
         const opt = document.createElement("option");
@@ -292,7 +417,7 @@
         return;
       }
 
-      const resp = await fetch(`${API}/items?list_id=eq.${listId}&order=id`);
+      const resp = await fetch(`${API}/items?list_id=eq.${listId}&order=id`, { headers: authHeaders() });
       if (thisRequest !== loadRequestId) return;
       const items = await resp.json();
       if (thisRequest !== loadRequestId) return;
@@ -310,7 +435,7 @@
 
       // Fetch comment counts for all items in this list
       const itemIds = items.map(i => i.id);
-      const commentsResp = await fetch(`${API}/comments?item_id=in.(${itemIds.join(",")})`);
+      const commentsResp = await fetch(`${API}/comments?item_id=in.(${itemIds.join(",")})`, { headers: authHeaders() });
       if (thisRequest !== loadRequestId) return;
       const allComments = await commentsResp.json();
 
@@ -369,7 +494,7 @@
     async function setDone(itemId, done) {
       await fetch(`${API}/items?id=eq.${itemId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ done }),
       });
     }
@@ -393,7 +518,7 @@
     // Fetch and render comments for an item
     async function loadComments(itemId) {
       chatMessages.innerHTML = "";
-      const resp = await fetch(`${API}/comments?item_id=eq.${itemId}&order=created_at`);
+      const resp = await fetch(`${API}/comments?item_id=eq.${itemId}&order=created_at`, { headers: authHeaders() });
       const comments = await resp.json();
 
       if (comments.length === 0) {
@@ -401,9 +526,11 @@
         return;
       }
 
+      const myUserId = currentUserId();
       comments.forEach((comment) => {
         const div = document.createElement("div");
-        div.className = "chat-message";
+        const isOwn = comment.author_id && comment.author_id === myUserId;
+        div.className = "chat-message" + (isOwn ? " own" : "");
         const time = new Date(comment.created_at).toLocaleString();
 
         const header = document.createElement("div");
@@ -413,12 +540,15 @@
           <span class="chat-message-time">${escapeHtml(time)}</span>
         `;
 
-        const deleteBtn = document.createElement("button");
-        deleteBtn.className = "chat-message-delete";
-        deleteBtn.innerHTML = "&times;";
-        deleteBtn.title = "Delete comment";
-        deleteBtn.addEventListener("click", () => deleteComment(comment.id));
-        header.appendChild(deleteBtn);
+        // Only show delete button for own comments
+        if (isOwn) {
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "chat-message-delete";
+          deleteBtn.innerHTML = "&times;";
+          deleteBtn.title = "Delete comment";
+          deleteBtn.addEventListener("click", () => deleteComment(comment.id));
+          header.appendChild(deleteBtn);
+        }
 
         const content = document.createElement("div");
         content.className = "chat-message-content";
@@ -437,29 +567,40 @@
     async function deleteComment(commentId) {
       await fetch(`${API}/comments?id=eq.${commentId}`, {
         method: "DELETE",
+        headers: authHeaders(),
       });
+    }
+
+    // Get current user's ID (sub claim from JWT)
+    function currentUserId() {
+      if (keycloak.authenticated && keycloak.tokenParsed) {
+        return keycloak.tokenParsed.sub;
+      }
+      return null;
     }
 
     // Send a new comment
     async function sendComment() {
-      const author = chatAuthor.value.trim();
       const content = chatContent.value.trim();
 
-      if (!author || !content || !currentChatItemId) return;
-
-      // Save author name to localStorage
-      localStorage.setItem("chat_author", author);
+      if (!content || !currentChatItemId) return;
 
       chatSend.disabled = true;
       try {
+        const commentData = {
+          item_id: currentChatItemId,
+          author_name: currentUserName(),
+          content: content
+        };
+        // Include author_id if authenticated
+        const userId = currentUserId();
+        if (userId) {
+          commentData.author_id = userId;
+        }
         await fetch(`${API}/comments`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            item_id: currentChatItemId,
-            author_name: author,
-            content: content
-          }),
+          headers: authHeaders(),
+          body: JSON.stringify(commentData),
         });
         chatContent.value = "";
       } finally {
@@ -515,7 +656,6 @@
       ws.addEventListener("close", () => setTimeout(connectWS, 2000));
       ws.addEventListener("error", () => ws.close());
     }
-    connectWS();
 
     // Event listeners
     listSelect.addEventListener("change", () => loadItems(listSelect.value));
@@ -531,7 +671,20 @@
       }
     });
 
-    loadLists();
+    // Initialize Keycloak
+    console.log('Initializing Keycloak at', KEYCLOAK_URL);
+    keycloak.init({
+      onLoad: 'check-sso'
+    }).then(authenticated => {
+      console.log('Keycloak init complete, authenticated:', authenticated);
+      initApp();
+    }).catch(err => {
+      console.error('Keycloak init failed:', err);
+      // Still initialize app without auth
+      updateAuthUI();
+      loadLists();
+      connectWS();
+    });
   </script>
 </body>
 </html>

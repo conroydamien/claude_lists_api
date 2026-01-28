@@ -7,6 +7,79 @@
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "web_user",
+        "description": "Authenticated user role for PostgREST"
+      }
+    ]
+  },
+  "defaultRoles": ["web_user"],
+  "clientScopes": [
+    {
+      "name": "postgrest",
+      "description": "PostgREST custom claims",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "postgrest-role",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "role",
+            "claim.value": "web_user",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "firstName",
+            "claim.name": "given_name",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "id",
+            "claim.name": "sub",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
   "clients": [
     {
       "clientId": "claude-lists-web",
@@ -23,7 +96,13 @@
         "http://localhost:8080",
         "http://127.0.0.1:8080"
       ],
-      "protocol": "openid-connect"
+      "protocol": "openid-connect",
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "postgrest"
+      ]
     }
   ],
   "users": [
@@ -40,7 +119,8 @@
           "value": "password",
           "temporary": false
         }
-      ]
+      ],
+      "realmRoles": ["web_user"]
     },
     {
       "username": "bob",
@@ -55,7 +135,8 @@
           "value": "password",
           "temporary": false
         }
-      ]
+      ],
+      "realmRoles": ["web_user"]
     },
     {
       "username": "charlie",
@@ -70,7 +151,8 @@
           "value": "password",
           "temporary": false
         }
-      ]
+      ],
+      "realmRoles": ["web_user"]
     }
   ]
 }
