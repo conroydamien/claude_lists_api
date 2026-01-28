@@ -144,6 +144,18 @@
       font-weight: 600;
       color: #333;
     }
+    .chat-message-delete {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 0 4px;
+      margin-left: 8px;
+    }
+    .chat-message-delete:hover {
+      color: #e53935;
+    }
     .chat-message-content {
       white-space: pre-wrap;
       word-break: break-word;
@@ -393,18 +405,39 @@
         const div = document.createElement("div");
         div.className = "chat-message";
         const time = new Date(comment.created_at).toLocaleString();
-        div.innerHTML = `
-          <div class="chat-message-header">
-            <span class="chat-message-author">${escapeHtml(comment.author_name)}</span>
-            <span class="chat-message-time">${escapeHtml(time)}</span>
-          </div>
-          <div class="chat-message-content">${escapeHtml(comment.content)}</div>
+
+        const header = document.createElement("div");
+        header.className = "chat-message-header";
+        header.innerHTML = `
+          <span class="chat-message-author">${escapeHtml(comment.author_name)}</span>
+          <span class="chat-message-time">${escapeHtml(time)}</span>
         `;
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "chat-message-delete";
+        deleteBtn.innerHTML = "&times;";
+        deleteBtn.title = "Delete comment";
+        deleteBtn.addEventListener("click", () => deleteComment(comment.id));
+        header.appendChild(deleteBtn);
+
+        const content = document.createElement("div");
+        content.className = "chat-message-content";
+        content.textContent = comment.content;
+
+        div.appendChild(header);
+        div.appendChild(content);
         chatMessages.appendChild(div);
       });
 
       // Scroll to bottom
       chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Delete a comment
+    async function deleteComment(commentId) {
+      await fetch(`${API}/comments?id=eq.${commentId}`, {
+        method: "DELETE",
+      });
     }
 
     // Send a new comment
@@ -473,6 +506,10 @@
         // Handle comment changes
         if (data.item_id !== undefined) {
           scheduleCommentReload(data.item_id);
+          // Also reload items to update comment counts
+          if (listSelect.value && String(data.list_id) === listSelect.value) {
+            scheduleReload();
+          }
         }
       });
       ws.addEventListener("close", () => setTimeout(connectWS, 2000));
