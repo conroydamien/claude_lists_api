@@ -301,7 +301,7 @@
   <script type="module">
     import Keycloak from "https://cdn.jsdelivr.net/npm/keycloak-js@26.2.0/lib/keycloak.js";
 
-    const API = `http://${window.location.hostname}:3000`;
+    const API = `${window.location.origin}/api`;
     const KEYCLOAK_URL = `http://${window.location.hostname}:8180`;
 
     const listSelect = document.getElementById("list-select");
@@ -597,12 +597,22 @@
         if (userId) {
           commentData.author_id = userId;
         }
-        await fetch(`${API}/comments`, {
+        console.log('Sending comment:', commentData);
+        const resp = await fetch(`${API}/comments`, {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify(commentData),
         });
+        if (!resp.ok) {
+          const err = await resp.text();
+          console.error('Comment failed:', resp.status, err);
+          alert('Failed to send comment: ' + err);
+          return;
+        }
         chatContent.value = "";
+      } catch (e) {
+        console.error('Comment error:', e);
+        alert('Error sending comment: ' + e.message);
       } finally {
         chatSend.disabled = false;
       }
@@ -635,7 +645,8 @@
 
     // WebSocket connection for real-time updates with auto-reconnect.
     function connectWS() {
-      const ws = new WebSocket(`ws://${window.location.hostname}:9000`);
+      const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${wsProto}//${window.location.host}/ws`);
       ws.addEventListener("message", (event) => {
         const data = JSON.parse(event.data);
         // Handle item changes

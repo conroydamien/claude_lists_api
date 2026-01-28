@@ -1,6 +1,6 @@
 # Claude Lists API
 
-A to-do list app with a PostgREST API, PostgreSQL database, web frontend, and real-time updates via WebSocket.
+A to-do list app with a PostgREST API, PostgreSQL database, web frontend, real-time updates via WebSocket, and Keycloak authentication.
 
 ## Quick start
 
@@ -8,44 +8,77 @@ A to-do list app with a PostgREST API, PostgreSQL database, web frontend, and re
 podman-compose down -v && podman-compose build --no-cache && podman-compose up -d
 ```
 
-Open http://localhost:8080.
+Wait for Keycloak to start, then refresh the JWKS:
+
+```bash
+# Wait for Keycloak
+until curl -sf http://localhost:8180/realms/claude-lists/.well-known/openid-configuration > /dev/null; do sleep 2; done
+
+# Export JWKS and restart PostgREST
+curl -s http://localhost:8180/realms/claude-lists/protocol/openid-connect/certs > ./keycloak/keycloak-jwks.json
+podman restart claude-lists-postgrest
+```
+
+Open http://localhost:8080 (or https://localhost:8443 for HTTPS).
 
 ## Services
 
-| Service      | Port | Description                                      |
-|-------------|------|--------------------------------------------------|
-| web         | 8080 | Static web frontend (Node/Express)               |
-| postgrest   | 3000 | RESTful API backed by PostgreSQL                 |
-| ws-sidecar  | 9000 | WebSocket server broadcasting item changes       |
-| db          | 5433 | PostgreSQL 16                                    |
+| Service     | Port       | Description                                      |
+|-------------|------------|--------------------------------------------------|
+| web         | 8080/8443  | Web frontend (HTTP/HTTPS) with API proxy         |
+| postgrest   | 3000       | RESTful API backed by PostgreSQL                 |
+| keycloak    | 8180       | OAuth2/OIDC identity provider                    |
+| ws-sidecar  | 9000       | WebSocket server broadcasting changes            |
+| db          | 5433       | PostgreSQL 16                                    |
+
+## Authentication
+
+Test users (all with password `password`):
+- alice
+- bob
+- charlie
+
+The web app uses Keycloak for login. JWTs include a `role` claim that PostgREST uses for database role switching.
+
+Comments can only be deleted by their author (enforced via Row Level Security).
 
 ## LAN access (Podman on macOS)
 
-Podman on macOS runs containers inside a Linux VM. With user-mode networking (the default), ports are only forwarded to `localhost` on the host — not to your LAN interface. This means other devices on your network can't connect directly.
+Podman on macOS runs containers inside a Linux VM. Ports are only forwarded to `localhost`, not your LAN interface.
 
-To expose the app on your LAN, use `socat` to forward traffic from your LAN IP to localhost:
-
-```bash
-brew install socat
-
-LAN_IP=$(ipconfig getifaddr en0)
-socat TCP4-LISTEN:8080,bind=$LAN_IP,reuseaddr,fork TCP4:127.0.0.1:8080 &
-socat TCP4-LISTEN:3000,bind=$LAN_IP,reuseaddr,fork TCP4:127.0.0.1:3000 &
-socat TCP4-LISTEN:9000,bind=$LAN_IP,reuseaddr,fork TCP4:127.0.0.1:9000 &
-```
-
-You may need to allow `socat` through the macOS firewall: System Settings > Network > Firewall > Options, then add `/opt/homebrew/bin/socat` (press Cmd+Shift+G in the file picker to navigate to `/opt`).
-
-Then visit `http://<LAN_IP>:8080` from your phone or other device.
-
-To stop the forwards:
+Use the included script to forward ports:
 
 ```bash
-pkill -f "socat.*TCP"
+./lan-proxy.sh
 ```
+
+This forwards HTTPS (8443), Keycloak (8180), API (3000), and WebSocket (9000) to your LAN IP.
+
+Then visit `https://<LAN_IP>:8443` from your phone or other device. Accept the self-signed certificate warning.
+
+To stop: press Ctrl+C or run `killall socat`.
+
+## Architecture
+
+See [docs/architecture.puml](docs/architecture.puml) for the system diagram.
+
+Key features:
+- **API Proxy**: The web server proxies `/api/*` to PostgREST, avoiding mixed-content issues with HTTPS
+- **HTTPS**: Self-signed certificates in `web/certs/` for secure context (required for Web Crypto API)
+- **Real-time**: PostgreSQL NOTIFY triggers push changes to WebSocket clients
+- **RLS**: Row Level Security restricts comment deletion to authors
 
 ## Tests
 
 ```bash
 python -m pytest tests/ -v
+```
+
+## Refreshing JWKS
+
+When Keycloak is recreated (using H2 in-memory database), it generates new keys. Refresh with:
+
+```bash
+curl http://localhost:8180/realms/claude-lists/protocol/openid-connect/certs > ./keycloak/keycloak-jwks.json
+podman restart claude-lists-postgrest
 ```

@@ -5,23 +5,29 @@ skinparam componentStyle rectangle
 actor "Client" as client
 
 node "Podman Compose" {
-    component "Web App\n(port 8080)" as web
+    component "Web App\n(HTTP 8080 / HTTPS 8443)" as web
     component "PostgREST\n(port 3000)" as postgrest
     component "WS Sidecar\n(port 9000)" as wssidecar
     component "Keycloak\n(port 8180)" as keycloak
     component "Seeder\n(one-shot)" as seeder
     database "PostgreSQL 16\n(port 5433)" as db
 
-    web --> postgrest : "fetch lists\nand items"
+    web --> postgrest : "/api/* proxy"
     web --> keycloak : "OAuth2/OIDC\nlogin flow"
     seeder --> postgrest : "POST seed data\non startup"
     postgrest --> db : "connects as\nclaude_lists user"
     db --> wssidecar : "LISTEN/NOTIFY\nitems_changed,\ncomments_changed"
 }
 
-client --> web : "HTTP\nport 8080"
+client --> web : "HTTPS :8443\n(or HTTP :8080)"
 client --> wssidecar : "WebSocket\nport 9000"
 client --> keycloak : "login redirect\nport 8180"
+
+note left of client
+  LAN access requires
+  socat port forwarding
+  (see lan-proxy.sh)
+end note
 
 note right of db
   Database: claude_lists
@@ -69,6 +75,12 @@ end note
 note right of seeder
   Loads seed data via REST API
   on first startup, then exits
+end note
+
+note left of web
+  HTTPS with self-signed cert
+  API proxy avoids mixed content
+  Static files + Express server
 end note
 
 @enduml
