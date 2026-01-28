@@ -14,7 +14,7 @@ node "Podman Compose" {
     web --> postgrest : "fetch lists\nand items"
     seeder --> postgrest : "POST seed data\non startup"
     postgrest --> db : "connects as\nclaude_lists user"
-    db --> wssidecar : "LISTEN/NOTIFY\nitems_changed"
+    db --> wssidecar : "LISTEN/NOTIFY\nitems_changed,\ncomments_changed"
 }
 
 client --> web : "HTTP\nport 8080"
@@ -34,9 +34,14 @@ note bottom of db
     - items (id, list_id FK->lists,
              title, description, done,
              created_at, updated_at)
-  Trigger:
+    - comments (id, item_id FK->items,
+             author_name, content,
+             created_at)
+  Triggers:
     - items_changed (AFTER INSERT/
       UPDATE/DELETE on items)
+    - comments_changed (AFTER INSERT/
+      UPDATE/DELETE on comments)
 end note
 
 note right of postgrest

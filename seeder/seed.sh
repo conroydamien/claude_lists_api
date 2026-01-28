@@ -40,4 +40,17 @@ curl -sf "$API/items" \
     {"list_id": 3, "title": "The Pragmatic Programmer", "description": "Hunt & Thomas", "done": false}
   ]' > /dev/null
 
+echo "Seeding comments..."
+curl -sf "$API/comments" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"item_id": 1, "author_name": "Alice", "content": "Should we get whole milk instead?"},
+    {"item_id": 1, "author_name": "Bob", "content": "Semi-skimmed is fine, it is what we usually get."},
+    {"item_id": 4, "author_name": "Alice", "content": "I can set this up using GitHub Actions."},
+    {"item_id": 4, "author_name": "Charlie", "content": "Make sure to add caching for npm dependencies."},
+    {"item_id": 4, "author_name": "Alice", "content": "Good idea, will do!"},
+    {"item_id": 6, "author_name": "Bob", "content": "Should we use JWT or session-based auth?"},
+    {"item_id": 6, "author_name": "Alice", "content": "JWT would be simpler for our API-first approach."}
+  ]' > /dev/null
+
 echo "Seeding complete"

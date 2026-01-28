@@ -16,7 +16,8 @@ function connectPG() {
 
   pg.connect()
     .then(() => pg.query("LISTEN items_changed"))
-    .then(() => console.log("Listening on Postgres channel: items_changed"))
+    .then(() => pg.query("LISTEN comments_changed"))
+    .then(() => console.log("Listening on Postgres channels: items_changed, comments_changed"))
     .catch((err) => {
       console.error("Postgres connect failed, retrying:", err.message);
       setTimeout(connectPG, RECONNECT_DELAY);
