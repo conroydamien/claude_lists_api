@@ -45,9 +45,10 @@
       background: none;
       border: 1px solid #ccc;
       border-radius: 4px;
-      padding: 2px 8px;
+      padding: 2px 6px;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 1.1rem;
+      line-height: 1;
       color: #666;
     }
     .undo-btn:hover {
@@ -100,7 +101,9 @@
     }
 
     // Fetch items for the selected list and render the table.
+    let loadRequestId = 0;
     async function loadItems(listId) {
+      const thisRequest = ++loadRequestId;
       itemsBody.innerHTML = "";
 
       if (!listId) {
@@ -110,7 +113,11 @@
       }
 
       const resp = await fetch(`${API}/items?list_id=eq.${listId}&order=id`);
+      if (thisRequest !== loadRequestId) return;
       const items = await resp.json();
+      if (thisRequest !== loadRequestId) return;
+
+      itemsBody.innerHTML = "";
 
       if (items.length === 0) {
         itemsTable.hidden = true;
@@ -128,7 +135,7 @@
         if (item.done) {
           const undoBtn = document.createElement("button");
           undoBtn.className = "undo-btn";
-          undoBtn.textContent = "undo";
+          undoBtn.textContent = "\u21A9";
           undoBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             setDone(item.id, false);
@@ -166,13 +173,20 @@
       return div.innerHTML;
     }
 
+    // Debounce loadItems so rapid WebSocket messages don't cause duplicates.
+    let reloadTimer = null;
+    function scheduleReload() {
+      clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => loadItems(listSelect.value), 100);
+    }
+
     // WebSocket connection for real-time updates with auto-reconnect.
     function connectWS() {
       const ws = new WebSocket(`ws://${window.location.hostname}:9000`);
       ws.addEventListener("message", (event) => {
         const data = JSON.parse(event.data);
         if (listSelect.value && String(data.list_id) === listSelect.value) {
-          loadItems(listSelect.value);
+          scheduleReload();
         }
       });
       ws.addEventListener("close", () => setTimeout(connectWS, 2000));

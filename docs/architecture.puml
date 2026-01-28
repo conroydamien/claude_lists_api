@@ -8,9 +8,11 @@ node "Podman Compose" {
     component "Web App\n(port 8080)" as web
     component "PostgREST\n(port 3000)" as postgrest
     component "WS Sidecar\n(port 9000)" as wssidecar
+    component "Seeder\n(one-shot)" as seeder
     database "PostgreSQL 16\n(port 5433)" as db
 
     web --> postgrest : "fetch lists\nand items"
+    seeder --> postgrest : "POST seed data\non startup"
     postgrest --> db : "connects as\nclaude_lists user"
     db --> wssidecar : "LISTEN/NOTIFY\nitems_changed"
 }
@@ -45,6 +47,11 @@ end note
 note right of wssidecar
   Broadcasts item changes
   to connected WebSocket clients
+end note
+
+note right of seeder
+  Loads seed data via REST API
+  on first startup, then exits
 end note
 
 @enduml
