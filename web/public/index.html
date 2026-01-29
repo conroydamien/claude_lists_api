@@ -14,10 +14,25 @@
     h1 {
       margin-bottom: 20px;
     }
-    select {
+    select, input[type="date"] {
       font-size: 1rem;
       padding: 6px 10px;
       margin-bottom: 20px;
+    }
+    .filters {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .filter-group label {
+      font-size: 0.85rem;
+      color: #666;
     }
     table {
       width: 100%;
@@ -40,6 +55,20 @@
     }
     tr:not(.done):hover {
       background: #f9f9f9;
+    }
+    .header-row {
+      background: #f0f7ff;
+      cursor: default;
+    }
+    .header-row:hover {
+      background: #f0f7ff;
+    }
+    .header-cell {
+      font-weight: 600;
+      color: #1565c0;
+      font-size: 0.95rem;
+      padding: 12px;
+      border-left: 3px solid #1976d2;
     }
     .undo-btn, .chat-btn {
       background: none;
@@ -263,6 +292,19 @@
     </div>
   </div>
 
+  <div class="filters">
+    <div class="filter-group">
+      <label for="date-filter">Date:</label>
+      <input type="date" id="date-filter">
+    </div>
+    <div class="filter-group">
+      <label for="venue-filter">Venue:</label>
+      <select id="venue-filter">
+        <option value="">All venues</option>
+      </select>
+    </div>
+  </div>
+
   <label for="list-select">Choose a list:</label>
   <select id="list-select">
     <option value="">-- Select a list --</option>
@@ -311,6 +353,11 @@
     const userInfo = document.getElementById("user-info");
     const userName = document.getElementById("user-name");
     const authBtn = document.getElementById("auth-btn");
+    const dateFilter = document.getElementById("date-filter");
+    const venueFilter = document.getElementById("venue-filter");
+
+    // All lists cache for filtering
+    let allLists = [];
 
     // Chat panel elements
     const chatOverlay = document.getElementById("chat-overlay");
@@ -393,16 +440,66 @@
       }, 30000);
     }
 
-    // Fetch all lists and populate the dropdown.
+    // Fetch all lists and populate the dropdowns.
     async function loadLists() {
       const resp = await fetch(`${API}/lists?order=name`, { headers: authHeaders() });
-      const lists = await resp.json();
-      lists.forEach((list) => {
+      allLists = await resp.json();
+
+      // Extract unique venues and dates
+      const venues = new Set();
+      const dates = new Set();
+      allLists.forEach((list) => {
+        if (list.metadata?.venue) venues.add(list.metadata.venue);
+        if (list.metadata?.date) dates.add(list.metadata.date);
+      });
+
+      // Populate venue dropdown
+      Array.from(venues).sort().forEach((venue) => {
+        const opt = document.createElement("option");
+        opt.value = venue;
+        opt.textContent = venue;
+        venueFilter.appendChild(opt);
+      });
+
+      // Set default date to today or nearest available date
+      const today = new Date().toISOString().split('T')[0];
+      const sortedDates = Array.from(dates).sort();
+      const nearestDate = sortedDates.find(d => d >= today) || sortedDates[sortedDates.length - 1];
+      if (nearestDate) {
+        dateFilter.value = nearestDate;
+      }
+
+      filterLists();
+    }
+
+    // Filter lists based on date and venue selections
+    function filterLists() {
+      const selectedDate = dateFilter.value;
+      const selectedVenue = venueFilter.value;
+
+      // Clear current options
+      listSelect.innerHTML = '<option value="">-- Select a list --</option>';
+
+      // Filter and populate
+      const filtered = allLists.filter((list) => {
+        if (selectedDate && list.metadata?.date !== selectedDate) return false;
+        if (selectedVenue && list.metadata?.venue !== selectedVenue) return false;
+        return true;
+      });
+
+      filtered.forEach((list) => {
         const opt = document.createElement("option");
         opt.value = list.id;
-        opt.textContent = list.name;
+        // Show type in the name if available
+        const type = list.metadata?.type ? ` (${list.metadata.type})` : '';
+        opt.textContent = list.name + type;
         listSelect.appendChild(opt);
       });
+
+      // Clear items table when filters change
+      itemsBody.innerHTML = "";
+      itemsTable.hidden = true;
+      message.textContent = filtered.length === 0 ? "No lists match the selected filters." : "";
     }
 
     // Fetch items for the selected list and render the table.
@@ -417,14 +514,23 @@
         return;
       }
 
-      const resp = await fetch(`${API}/items?list_id=eq.${listId}&order=id`, { headers: authHeaders() });
+      // Fetch list (for headers) and items in parallel
+      const [listResp, itemsResp] = await Promise.all([
+        fetch(`${API}/lists?id=eq.${listId}`, { headers: authHeaders() }),
+        fetch(`${API}/items?list_id=eq.${listId}&order=id`, { headers: authHeaders() })
+      ]);
       if (thisRequest !== loadRequestId) return;
-      const items = await resp.json();
+
+      const lists = await listResp.json();
+      const items = await itemsResp.json();
       if (thisRequest !== loadRequestId) return;
+
+      const list = lists[0] || {};
+      const headers = list.metadata?.headers || [];
 
       itemsBody.innerHTML = "";
 
-      if (items.length === 0) {
+      if (items.length === 0 && headers.length === 0) {
         itemsTable.hidden = true;
         message.textContent = "No items in this list.";
         return;
@@ -435,17 +541,53 @@
 
       // Fetch comment counts for all items in this list
       const itemIds = items.map(i => i.id);
-      const commentsResp = await fetch(`${API}/comments?item_id=in.(${itemIds.join(",")})`, { headers: authHeaders() });
-      if (thisRequest !== loadRequestId) return;
-      const allComments = await commentsResp.json();
+      let commentCounts = {};
+      if (itemIds.length > 0) {
+        const commentsResp = await fetch(`${API}/comments?item_id=in.(${itemIds.join(",")})`, { headers: authHeaders() });
+        if (thisRequest !== loadRequestId) return;
+        const allComments = await commentsResp.json();
 
-      // Count comments per item
-      const commentCounts = {};
-      allComments.forEach(c => {
-        commentCounts[c.item_id] = (commentCounts[c.item_id] || 0) + 1;
+        // Count comments per item
+        allComments.forEach(c => {
+          commentCounts[c.item_id] = (commentCounts[c.item_id] || 0) + 1;
+        });
+      }
+
+      // Group headers by position
+      const headersByPosition = {};
+      headers.forEach(h => {
+        const pos = h.before_case || 'end';
+        if (!headersByPosition[pos]) headersByPosition[pos] = [];
+        headersByPosition[pos].push(h.text);
       });
 
-      items.forEach((item) => {
+      // Sort items by list_number from metadata
+      const sortedItems = [...items].sort((a, b) => {
+        const aNum = a.metadata?.list_number || 999;
+        const bNum = b.metadata?.list_number || 999;
+        return aNum - bNum;
+      });
+
+      // Helper to render combined headers in a single row
+      function renderHeaders(texts) {
+        const tr = document.createElement("tr");
+        tr.className = "header-row";
+        tr.innerHTML = `<td colspan="4" class="header-cell">${texts.map(t => escapeHtml(t)).join(' &middot; ')}</td>`;
+        itemsBody.appendChild(tr);
+      }
+
+      // Track which headers we've rendered
+      const renderedPositions = new Set();
+
+      sortedItems.forEach((item) => {
+        const listNum = item.metadata?.list_number;
+
+        // Render any headers that should appear before this case
+        if (listNum && headersByPosition[listNum] && !renderedPositions.has(listNum)) {
+          renderHeaders(headersByPosition[listNum]);
+          renderedPositions.add(listNum);
+        }
+
         const tr = document.createElement("tr");
         if (item.done) tr.classList.add("done");
 
@@ -488,6 +630,11 @@
 
         itemsBody.appendChild(tr);
       });
+
+      // Render any headers at the end (after_cases or position 'end')
+      if (headersByPosition['end']) {
+        renderHeaders(headersByPosition['end']);
+      }
     }
 
     // Set the done status of an item via PATCH. UI updates via WebSocket.
@@ -540,12 +687,12 @@
           <span class="chat-message-time">${escapeHtml(time)}</span>
         `;
 
-        // Only show delete button for own comments
-        if (isOwn) {
+        // Show delete button for own comments or if admin
+        if (isOwn || isAdmin()) {
           const deleteBtn = document.createElement("button");
           deleteBtn.className = "chat-message-delete";
           deleteBtn.innerHTML = "&times;";
-          deleteBtn.title = "Delete comment";
+          deleteBtn.title = isOwn ? "Delete comment" : "Delete comment (admin)";
           deleteBtn.addEventListener("click", () => deleteComment(comment.id));
           header.appendChild(deleteBtn);
         }
@@ -577,6 +724,14 @@
         return keycloak.tokenParsed.sub;
       }
       return null;
+    }
+
+    // Check if current user is an admin
+    function isAdmin() {
+      if (keycloak.authenticated && keycloak.tokenParsed) {
+        return keycloak.tokenParsed.role === 'web_admin';
+      }
+      return false;
     }
 
     // Send a new comment
@@ -670,6 +825,8 @@
 
     // Event listeners
     listSelect.addEventListener("change", () => loadItems(listSelect.value));
+    dateFilter.addEventListener("change", filterLists);
+    venueFilter.addEventListener("change", filterLists);
     chatClose.addEventListener("click", closeChat);
     chatOverlay.addEventListener("click", (e) => {
       if (e.target === chatOverlay) closeChat();
@@ -682,19 +839,16 @@
       }
     });
 
-    // Initialize Keycloak
+    // Initialize Keycloak - login required
     console.log('Initializing Keycloak at', KEYCLOAK_URL);
     keycloak.init({
-      onLoad: 'check-sso'
+      onLoad: 'login-required'
     }).then(authenticated => {
       console.log('Keycloak init complete, authenticated:', authenticated);
       initApp();
     }).catch(err => {
       console.error('Keycloak init failed:', err);
-      // Still initialize app without auth
-      updateAuthUI();
-      loadLists();
-      connectWS();
+      document.body.innerHTML = '<p style="padding: 2rem;">Authentication failed. Please refresh to try again.</p>';
     });
   </script>
 </body>

@@ -9,13 +9,16 @@ node "Podman Compose" {
     component "PostgREST\n(port 3000)" as postgrest
     component "WS Sidecar\n(port 9000)" as wssidecar
     component "Keycloak\n(port 8180)" as keycloak
-    component "Seeder\n(one-shot)" as seeder
+    component "Courts Seeder\n(one-shot)" as seeder
+    cloud "courts.ie\nLegal Diary" as courts
     database "PostgreSQL 16\n(port 5433)" as db
 
     web --> postgrest : "/api/* proxy"
     web --> keycloak : "OAuth2/OIDC\nlogin flow"
     seeder --> postgrest : "POST seed data\non startup"
+    seeder --> courts : "fetch diary\nentries (cached)"
     postgrest --> db : "connects as\nclaude_lists user"
+    keycloak --> db : "connects as\nkeycloak user"
     db --> wssidecar : "LISTEN/NOTIFY\nitems_changed,\ncomments_changed"
 }
 
@@ -30,20 +33,24 @@ note left of client
 end note
 
 note right of db
-  Database: claude_lists
+  Databases:
+    - claude_lists (app data)
+    - keycloak (identity data)
   Roles:
     - claude_lists (owner)
-    - web_anon (anonymous CRUD)
+    - web_anon (no access)
     - web_user (authenticated CRUD)
+    - web_admin (can delete any comment)
+    - keycloak (Keycloak owner)
 end note
 
 note bottom of db
   Tables:
     - lists (id, name, description,
-             created_at, updated_at)
+             metadata JSONB, timestamps)
     - items (id, list_id FK->lists,
              title, description, done,
-             created_at, updated_at)
+             metadata JSONB, timestamps)
     - comments (id, item_id FK->items,
              author_id, author_name,
              content, created_at)
@@ -62,9 +69,11 @@ end note
 
 note right of keycloak
   Realm: claude-lists
-  Users: alice, bob, charlie
-  Provides JWT with sub,
-  preferred_username, role
+  Users: alice, bob, charlie, admin
+  Roles: web_user, web_admin
+  JWT claims: sub, role,
+  preferred_username
+  Data persisted in PostgreSQL
 end note
 
 note right of wssidecar
@@ -73,8 +82,11 @@ note right of wssidecar
 end note
 
 note right of seeder
-  Loads seed data via REST API
-  on first startup, then exits
+  Fetches Irish Courts legal diary
+  from courts.ie, caches HTML,
+  parses cases & headers, loads
+  via REST API. Runs on startup
+  if DB is empty.
 end note
 
 note left of web

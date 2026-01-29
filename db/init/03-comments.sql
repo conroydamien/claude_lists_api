@@ -11,7 +11,7 @@ CREATE TABLE comments (
 -- Enable Row Level Security
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 
--- Anyone can read comments
+-- Authenticated users can read comments
 CREATE POLICY comments_select ON comments
     FOR SELECT USING (true);
 
@@ -19,16 +19,18 @@ CREATE POLICY comments_select ON comments
 CREATE POLICY comments_insert ON comments
     FOR INSERT WITH CHECK (true);
 
--- Only the author can delete their own comments
+-- Users can delete their own comments, admins can delete any comment
 CREATE POLICY comments_delete ON comments
     FOR DELETE USING (
-        author_id IS NOT NULL AND
-        author_id = current_setting('request.jwt.claims', true)::json->>'sub'
+        -- Admin can delete any comment
+        current_setting('request.jwt.claims', true)::json->>'role' = 'web_admin'
+        OR
+        -- Author can delete their own comment
+        (author_id IS NOT NULL AND
+         author_id = current_setting('request.jwt.claims', true)::json->>'sub')
     );
 
--- Allow anonymous users (web_anon) to bypass RLS for backward compatibility
--- Remove these if you want to require authentication
-GRANT ALL ON comments TO web_anon;
+-- Force RLS for all roles
 ALTER TABLE comments FORCE ROW LEVEL SECURITY;
 
 -- Notify function: sends a JSON payload on the 'comments_changed' channel

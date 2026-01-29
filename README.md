@@ -1,6 +1,14 @@
 # Claude Lists API
 
-A to-do list app with a PostgREST API, PostgreSQL database, web frontend, real-time updates via WebSocket, and Keycloak authentication.
+A list management app displaying Irish Circuit Court legal diary data. Features a PostgREST API, PostgreSQL database, web frontend with date/venue filtering, real-time updates via WebSocket, and Keycloak authentication.
+
+## Data Source
+
+The app fetches court diary listings from [courts.ie](https://legaldiary.courts.ie) and parses them into:
+- **Lists**: Court diary entries (venue, date, type) with headers in metadata
+- **Items**: Individual cases with structured metadata (case number, parties, list number)
+
+The seeder caches fetched HTML in a Docker volume to avoid repeatedly hitting courts.ie. Use `--refresh` to force fresh fetches.
 
 ## Quick start
 
@@ -23,13 +31,29 @@ Open http://localhost:8080 (or https://localhost:8443 for HTTPS).
 
 ## Services
 
-| Service     | Port       | Description                                      |
-|-------------|------------|--------------------------------------------------|
-| web         | 8080/8443  | Web frontend (HTTP/HTTPS) with API proxy         |
-| postgrest   | 3000       | RESTful API backed by PostgreSQL                 |
-| keycloak    | 8180       | OAuth2/OIDC identity provider                    |
-| ws-sidecar  | 9000       | WebSocket server broadcasting changes            |
-| db          | 5433       | PostgreSQL 16                                    |
+| Service       | Port       | Description                                      |
+|---------------|------------|--------------------------------------------------|
+| web           | 8080/8443  | Web frontend (HTTP/HTTPS) with API proxy         |
+| postgrest     | 3000       | RESTful API backed by PostgreSQL                 |
+| keycloak      | 8180       | OAuth2/OIDC identity provider                    |
+| ws-sidecar    | 9000       | WebSocket server broadcasting changes            |
+| db            | 5433       | PostgreSQL 16                                    |
+| seeder-courts | -          | Fetches courts.ie data on startup (one-shot)     |
+
+## Re-seeding Data
+
+To re-seed the database with fresh data from courts.ie:
+
+```bash
+# Clear existing data
+podman exec claude-lists-db psql -U claude_lists -d claude_lists -c "TRUNCATE lists CASCADE;"
+
+# Run seeder (uses cached HTML by default)
+podman-compose up seeder-courts
+
+# Or force fresh fetch from courts.ie
+podman-compose run --rm seeder-courts python seed.py --refresh
+```
 
 ## Authentication
 
@@ -63,10 +87,14 @@ To stop: press Ctrl+C or run `killall socat`.
 See [docs/architecture.puml](docs/architecture.puml) for the system diagram.
 
 Key features:
+- **Courts Data**: Fetches and parses Irish Circuit Court legal diary from courts.ie
+- **JSONB Metadata**: Flexible metadata storage for lists (headers, venue, date) and items (case number, parties)
+- **Filtering**: Date picker and venue dropdown filters in the web UI
 - **API Proxy**: The web server proxies `/api/*` to PostgREST, avoiding mixed-content issues with HTTPS
 - **HTTPS**: Self-signed certificates in `web/certs/` for secure context (required for Web Crypto API)
 - **Real-time**: PostgreSQL NOTIFY triggers push changes to WebSocket clients
 - **RLS**: Row Level Security restricts comment deletion to authors
+- **Caching**: HTML from courts.ie is cached to avoid repeated fetches
 
 ## Tests
 

@@ -12,6 +12,10 @@
       {
         "name": "web_user",
         "description": "Authenticated user role for PostgREST"
+      },
+      {
+        "name": "web_admin",
+        "description": "Admin role - can delete any comment"
       }
     ]
   },
@@ -28,10 +32,10 @@
         {
           "name": "postgrest-role",
           "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
           "config": {
+            "user.attribute": "postgrest_role",
             "claim.name": "role",
-            "claim.value": "web_user",
             "jsonType.label": "String",
             "id.token.claim": "true",
             "access.token.claim": "true",
@@ -116,6 +120,9 @@
       "lastName": "Smith",
       "enabled": true,
       "emailVerified": true,
+      "attributes": {
+        "postgrest_role": ["web_user"]
+      },
       "credentials": [
         {
           "type": "password",
@@ -132,6 +139,9 @@
       "lastName": "Jones",
       "enabled": true,
       "emailVerified": true,
+      "attributes": {
+        "postgrest_role": ["web_user"]
+      },
       "credentials": [
         {
           "type": "password",
@@ -148,6 +158,9 @@
       "lastName": "Brown",
       "enabled": true,
       "emailVerified": true,
+      "attributes": {
+        "postgrest_role": ["web_user"]
+      },
       "credentials": [
         {
           "type": "password",
@@ -156,6 +169,25 @@
         }
       ],
       "realmRoles": ["web_user"]
+    },
+    {
+      "username": "admin",
+      "email": "admin@example.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "postgrest_role": ["web_admin"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["web_admin"]
     }
   ]
 }
