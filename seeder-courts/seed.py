@@ -199,7 +199,8 @@ import re
 
 # Patterns for parsing case items
 CASE_NUMBER_PATTERN = re.compile(r'([A-Z]{2,4}[DP]?\d+/\d{4}|\d{4}/[A-Z]*\d+)')
-LIST_NUMBER_PATTERN = re.compile(r'^(\d+)\s+')
+# Match list number, optionally preceded by a time (e.g., "10:30	14 ..." or "14 ...")
+LIST_NUMBER_PATTERN = re.compile(r'^(?:\d{1,2}:\d{2}[\s\t]+)?(\d+)\s+')
 PARTIES_PATTERN = re.compile(r'\s+[-–]\s*[Vv]\s+[-–]?\s+|\s+[Vv]\s+')  # " - V - " or " v "
 CASE_TYPES = ['Equity', 'Personal Injury', 'Contract', 'Tort', 'Family', 'Probate', 'Landlord', 'Appeal']
 
@@ -378,6 +379,7 @@ def main():
     parser.add_argument("--timeout", type=int, default=30)
     parser.add_argument("--cache-hours", type=int, default=0, help="Cache expiry in hours (0=never expire)")
     parser.add_argument("--refresh", action="store_true", help="Force refresh from courts.ie (bypass cache)")
+    parser.add_argument("--update", action="store_true", help="Update mode: add new lists, skip existing ones")
     args = parser.parse_args()
 
     # Get auth token
@@ -400,13 +402,23 @@ def main():
     wait_for_service(args.api_url, dict(api_session.headers))
     print("API is ready")
 
-    # Check if data already exists
-    r = api_session.get(f"{args.api_url}/lists", timeout=30)
+    # Check existing data
+    r = api_session.get(f"{args.api_url}/lists?select=id,metadata", timeout=30)
     r.raise_for_status()
     existing = r.json()
+    existing_urls = set()
     if existing:
-        print(f"Data already exists ({len(existing)} lists), skipping seed")
-        return
+        if args.update:
+            # Build set of existing source URLs for deduplication
+            for lst in existing:
+                source_url = lst.get("metadata", {}).get("source_url")
+                if source_url:
+                    existing_urls.add(source_url)
+            print(f"Update mode: {len(existing)} existing lists, will skip duplicates")
+        else:
+            print(f"Data already exists ({len(existing)} lists), skipping seed")
+            print("Use --update to add new lists without removing existing data")
+            return
 
     # Set up session for courts.ie
     courts_session = requests.Session()
@@ -436,8 +448,14 @@ def main():
     total_lists = 0
     total_cases = 0
     total_headers = 0
+    skipped = 0
     for i, entry in enumerate(entries, 1):
         try:
+            # Skip if already exists (update mode)
+            if entry.url in existing_urls:
+                skipped += 1
+                continue
+
             # Fetch detail page first to get headers
             if use_cache and get_cached_html(entry.url, cache_hours):
                 detail_html = fetch_html(courts_session, entry.url, args.timeout, use_cache, cache_hours)
@@ -465,7 +483,10 @@ def main():
 
         time.sleep(args.delay)
 
-    print(f"Seeding complete: {total_lists} lists, {total_cases} cases, {total_headers} headers")
+    if skipped:
+        print(f"Seeding complete: {total_lists} new lists, {total_cases} cases, {total_headers} headers ({skipped} existing skipped)")
+    else:
+        print(f"Seeding complete: {total_lists} lists, {total_cases} cases, {total_headers} headers")
 
 
 if __name__ == "__main__":
