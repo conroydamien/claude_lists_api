@@ -1,6 +1,9 @@
 {
   "realm": "claude-lists",
   "enabled": true,
+  "accessTokenLifespan": 86400,
+  "ssoSessionIdleTimeout": 86400,
+  "ssoSessionMaxLifespan": 86400,
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
