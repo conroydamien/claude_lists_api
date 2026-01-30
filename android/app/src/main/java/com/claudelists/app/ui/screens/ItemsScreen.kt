@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubbleOutline
@@ -104,15 +105,15 @@ fun ItemsScreen(
                     .padding(padding),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
-                items(
+                itemsIndexed(
                     items = displayItems,
-                    key = { displayItem ->
+                    key = { index, displayItem ->
                         when (displayItem) {
-                            is ListItem.HeaderItem -> "header-${displayItem.texts.hashCode()}"
+                            is ListItem.HeaderItem -> "header-$index"
                             is ListItem.CaseItem -> "item-${displayItem.item.id}"
                         }
                     }
-                ) { displayItem ->
+                ) { index, displayItem ->
                     when (displayItem) {
                         is ListItem.HeaderItem -> {
                             HeaderRow(texts = displayItem.texts)
