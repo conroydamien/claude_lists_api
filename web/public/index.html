@@ -344,6 +344,7 @@
     import Keycloak from "https://cdn.jsdelivr.net/npm/keycloak-js@26.2.0/lib/keycloak.js";
 
     const API = `${window.location.origin}/api`;
+    const COURTS_IE = `${window.location.origin}/courts-ie`;
     const KEYCLOAK_URL = `http://${window.location.hostname}:8180`;
 
     const listSelect = document.getElementById("list-select");
@@ -356,8 +357,14 @@
     const dateFilter = document.getElementById("date-filter");
     const venueFilter = document.getElementById("venue-filter");
 
-    // All lists cache for filtering
+    // All lists cache for filtering (from courts.ie)
     let allLists = [];
+    // Current items from courts.ie
+    let currentItems = [];
+    // Current list metadata
+    let currentList = null;
+    // Maps local item IDs to database item IDs for comments
+    const itemIdMap = new Map();
 
     // Chat panel elements
     const chatOverlay = document.getElementById("chat-overlay");
@@ -367,8 +374,10 @@
     const chatSend = document.getElementById("chat-send");
     const chatClose = document.getElementById("chat-close");
 
-    // Current item being discussed
-    let currentChatItemId = null;
+    // Current item being discussed (local item)
+    let currentChatItem = null;
+    // Database item ID for the current chat
+    let currentChatDbItemId = null;
 
     // Keycloak instance
     const keycloak = new Keycloak({
@@ -429,7 +438,12 @@
         }
       }
       updateAuthUI();
-      loadLists();
+
+      // Set default date to today
+      const today = new Date().toISOString().split('T')[0];
+      dateFilter.value = today;
+
+      loadListsForDate(today);
       connectWS();
 
       // Token refresh
@@ -440,57 +454,148 @@
       }, 30000);
     }
 
-    // Fetch all lists and populate the dropdowns.
-    async function loadLists() {
-      const resp = await fetch(`${API}/lists?order=name`, { headers: authHeaders() });
-      allLists = await resp.json();
+    // Multiple case number patterns for different courts (matching Android)
+    const caseNumberPatterns = [
+      // Circuit/District: 2024/1234, 123/2024
+      /(\d{4}\/\d+|\d+\/\d{4})/,
+      // Prefixed: CC123/2024, DS1234/2024, CL1234/2024
+      /([A-Z]{1,4}\d+\/\d{4})/,
+      // High Court style: 2024 No. 1234 P, 2024 No 1234
+      /(\d{4}\s*No\.?\s*\d+\s*[A-Z]?)/,
+      // Record numbers with prefix: Record No. 1234, Rec 1234
+      /((?:Record|Rec)\.?\s*(?:No\.?)?\s*\d+)/i,
+      // Spaced format: 2024 CC 123
+      /(\d{4}\s+[A-Z]{1,4}\s+\d+)/,
+      // General alphanumeric ref: AB12/34, 12AB34/2024
+      /([A-Z0-9]{2,8}\/\d{4})/
+    ];
+    const listNumberPattern = /^(?:\d{1,2}:\d{2}[\s\t]+)?(\d+)\s+/;
 
-      // Extract unique venues and dates
-      const venues = new Set();
-      const dates = new Set();
-      allLists.forEach((list) => {
-        if (list.metadata?.venue) venues.add(list.metadata.venue);
-        if (list.metadata?.date) dates.add(list.metadata.date);
-      });
-
-      // Populate venue dropdown
-      Array.from(venues).sort().forEach((venue) => {
-        const opt = document.createElement("option");
-        opt.value = venue;
-        opt.textContent = venue;
-        venueFilter.appendChild(opt);
-      });
-
-      // Set default date to today or nearest available date
-      const today = new Date().toISOString().split('T')[0];
-      const sortedDates = Array.from(dates).sort();
-      const nearestDate = sortedDates.find(d => d >= today) || sortedDates[sortedDates.length - 1];
-      if (nearestDate) {
-        dateFilter.value = nearestDate;
-      }
-
-      filterLists();
+    // Format date for courts.ie URL (dd-MM-yyyy)
+    function formatDateForCourtsIe(dateStr) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}-${month}-${year}`;
     }
 
-    // Filter lists based on date and venue selections
+    // Parse date sort string (yyyymmdd) to ISO (yyyy-MM-dd)
+    function parseDateSort(dateSort) {
+      if (dateSort.length !== 8) return null;
+      const year = dateSort.substring(0, 4);
+      const month = dateSort.substring(4, 6);
+      const day = dateSort.substring(6, 8);
+      return `${year}-${month}-${day}`;
+    }
+
+    // Fetch lists from courts.ie for a specific date
+    async function loadListsForDate(dateStr) {
+      message.textContent = "Loading...";
+      allLists = [];
+      venueFilter.innerHTML = '<option value="">All venues</option>';
+      listSelect.innerHTML = '<option value="">-- Select a list --</option>';
+      itemsBody.innerHTML = "";
+      itemsTable.hidden = true;
+
+      try {
+        const courtsDate = formatDateForCourtsIe(dateStr);
+        const url = `${COURTS_IE}/legaldiary.nsf/circuit-court?OpenView&Jurisdiction=circuit-court&area=&type=&dateType=Range&dateFrom=${courtsDate}&dateTo=${courtsDate}&text=`;
+
+        const resp = await fetch(url);
+        const html = await resp.text();
+        allLists = parseListingsPage(html, dateStr);
+
+        // Extract unique venues
+        const venues = new Set();
+        allLists.forEach(list => {
+          if (list.metadata?.venue) venues.add(list.metadata.venue);
+        });
+
+        // Populate venue dropdown
+        Array.from(venues).sort().forEach(venue => {
+          const opt = document.createElement("option");
+          opt.value = venue;
+          opt.textContent = venue;
+          venueFilter.appendChild(opt);
+        });
+
+        filterLists();
+      } catch (e) {
+        console.error('Failed to load listings:', e);
+        message.textContent = "Failed to load listings from courts.ie";
+      }
+    }
+
+    // Parse courts.ie listing page HTML (matching Android logic)
+    function parseListingsPage(html, dateStr) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const lists = [];
+
+      // Find searchResults div and clickable rows
+      const resultsDiv = doc.querySelector('#searchResults');
+      if (!resultsDiv) {
+        console.log('No #searchResults found');
+        return lists;
+      }
+
+      const rows = resultsDiv.querySelectorAll('tr.clickable-row');
+      let localId = 1;
+
+      rows.forEach(row => {
+        const dataUrl = row.getAttribute('data-url');
+        if (!dataUrl) return;
+
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 5) return;
+
+        const dateText = cells[0].textContent.trim();
+        const dateSort = cells[0].getAttribute('data-text') || '';
+        const venue = cells[1].textContent.trim();
+        const type = cells[2].textContent.trim();
+        const subtitle = cells[3].textContent.trim();
+        const updatedText = cells[4].textContent.trim();
+
+        // Parse date from dateSort (yyyymmdd)
+        const parsedDate = parseDateSort(dateSort) || dateStr;
+
+        const name = subtitle || `${venue} - ${dateText}`;
+
+        lists.push({
+          id: localId++,
+          name: name,
+          description: type ? `${type} - ${venue}` : venue,
+          metadata: {
+            date: parsedDate,
+            dateText: dateText,
+            venue: venue,
+            type: type || null,
+            subtitle: subtitle || null,
+            updated: updatedText || null,
+            sourceUrl: `https://legaldiary.courts.ie${dataUrl}`,
+            headers: []
+          }
+        });
+      });
+
+      console.log(`Parsed ${lists.length} diary entries`);
+      return lists;
+    }
+
+    // Filter lists based on venue selection
     function filterLists() {
-      const selectedDate = dateFilter.value;
       const selectedVenue = venueFilter.value;
 
       // Clear current options
       listSelect.innerHTML = '<option value="">-- Select a list --</option>';
 
       // Filter and populate
-      const filtered = allLists.filter((list) => {
-        if (selectedDate && list.metadata?.date !== selectedDate) return false;
+      const filtered = allLists.filter(list => {
         if (selectedVenue && list.metadata?.venue !== selectedVenue) return false;
         return true;
       });
 
-      filtered.forEach((list) => {
+      filtered.forEach(list => {
         const opt = document.createElement("option");
         opt.value = list.id;
-        // Show type in the name if available
         const type = list.metadata?.type ? ` (${list.metadata.type})` : '';
         opt.textContent = list.name + type;
         listSelect.appendChild(opt);
@@ -502,11 +607,13 @@
       message.textContent = filtered.length === 0 ? "No lists match the selected filters." : "";
     }
 
-    // Fetch items for the selected list and render the table.
+    // Fetch items from courts.ie detail page
     let loadRequestId = 0;
     async function loadItems(listId) {
       const thisRequest = ++loadRequestId;
       itemsBody.innerHTML = "";
+      currentItems = [];
+      currentList = null;
 
       if (!listId) {
         itemsTable.hidden = true;
@@ -514,61 +621,278 @@
         return;
       }
 
-      // Fetch list (for headers) and items in parallel
-      const [listResp, itemsResp] = await Promise.all([
-        fetch(`${API}/lists?id=eq.${listId}`, { headers: authHeaders() }),
-        fetch(`${API}/items?list_id=eq.${listId}&order=id`, { headers: authHeaders() })
-      ]);
-      if (thisRequest !== loadRequestId) return;
-
-      const lists = await listResp.json();
-      const items = await itemsResp.json();
-      if (thisRequest !== loadRequestId) return;
-
-      const list = lists[0] || {};
-      const headers = list.metadata?.headers || [];
-
-      itemsBody.innerHTML = "";
-
-      if (items.length === 0 && headers.length === 0) {
-        itemsTable.hidden = true;
-        message.textContent = "No items in this list.";
+      const list = allLists.find(l => l.id === parseInt(listId));
+      if (!list) {
+        message.textContent = "List not found.";
         return;
       }
 
-      message.textContent = "";
-      itemsTable.hidden = false;
+      currentList = list;
+      message.textContent = "Loading cases...";
 
-      // Fetch comment counts for all items in this list
-      const itemIds = items.map(i => i.id);
-      let commentCounts = {};
-      if (itemIds.length > 0) {
-        const commentsResp = await fetch(`${API}/comments?item_id=in.(${itemIds.join(",")})`, { headers: authHeaders() });
+      try {
+        // Fetch detail page from courts.ie via proxy
+        const sourceUrl = list.metadata.sourceUrl;
+        const proxyUrl = sourceUrl.replace('https://legaldiary.courts.ie', COURTS_IE);
+        const resp = await fetch(proxyUrl);
         if (thisRequest !== loadRequestId) return;
-        const allComments = await commentsResp.json();
 
-        // Count comments per item
-        allComments.forEach(c => {
-          commentCounts[c.item_id] = (commentCounts[c.item_id] || 0) + 1;
-        });
+        const html = await resp.text();
+        const { items, headers } = parseDetailPage(html, list);
+        currentItems = items;
+        list.metadata.headers = headers;
+
+        if (thisRequest !== loadRequestId) return;
+
+        if (items.length === 0 && headers.length === 0) {
+          itemsTable.hidden = true;
+          message.textContent = "No items in this list.";
+          return;
+        }
+
+        message.textContent = "";
+        itemsTable.hidden = false;
+
+        // Load comment counts for items that exist in database
+        const commentCounts = await loadCommentCountsForItems(list, items);
+        if (thisRequest !== loadRequestId) return;
+
+        renderItems(items, headers, commentCounts);
+      } catch (e) {
+        console.error('Failed to load items:', e);
+        message.textContent = "Failed to load cases from courts.ie";
       }
+    }
+
+    // Parse courts.ie detail page HTML (matching Android logic)
+    function parseDetailPage(html, list) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      // Use .ld-content selector like Android
+      const contentDiv = doc.querySelector('.ld-content');
+      if (!contentDiv) {
+        console.log('No .ld-content found');
+        return { items: [], headers: [] };
+      }
+
+      let rawHtml = contentDiv.innerHTML;
+
+      // Replace <br> tags with newlines (preserving tabs)
+      rawHtml = rawHtml.replace(/<br\s*\/?>/gi, '\n');
+      // Strip other HTML tags but keep text
+      rawHtml = rawHtml.replace(/<[^>]+>/g, '');
+      // Decode HTML entities
+      rawHtml = rawHtml.replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"');
+
+      const lines = rawHtml.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      console.log(`Extracted ${lines.length} lines from detail page`);
+
+      return parseLines(lines, list);
+    }
+
+    // Parse a single line to extract case data (matching Android logic)
+    function parseCaseItem(line) {
+      // Check for list number at start (optionally preceded by time like "10:30")
+      const listMatch = line.match(listNumberPattern);
+      if (!listMatch) {
+        return {
+          listNumber: null,
+          caseNumber: null,
+          title: line,
+          parties: null,
+          isCase: false
+        };
+      }
+
+      const listNumber = parseInt(listMatch[1]);
+      const remainder = line.substring(listMatch[0].length).trim();
+
+      // Try each case number pattern until one matches
+      let caseMatch = null;
+      for (const pattern of caseNumberPatterns) {
+        caseMatch = remainder.match(pattern);
+        if (caseMatch) break;
+      }
+
+      if (!caseMatch) {
+        // No case number found, but still treat as a case if it has a list number
+        return {
+          listNumber: listNumber,
+          caseNumber: null,
+          title: line,
+          parties: remainder || null,
+          isCase: true  // Has list number, so it's a case entry
+        };
+      }
+
+      const caseNumber = caseMatch[1];
+
+      // Extract parties - text after case number
+      const afterCaseNumIdx = remainder.indexOf(caseNumber) + caseNumber.length;
+      let afterCaseNum = remainder.substring(afterCaseNumIdx).replace(/^[\t:\s]+/, '');
+
+      // Split on colon or tab to get parties before solicitors
+      const partiesMatch = afterCaseNum.split(/[:\t]/);
+      const parties = partiesMatch[0]?.trim().replace(/[,:;\t\s]+$/, '') || null;
+
+      return {
+        listNumber: listNumber,
+        caseNumber: caseNumber,
+        title: line,
+        parties: parties,
+        isCase: true
+      };
+    }
+
+    // Parse lines from detail page into items and headers (matching Android logic)
+    function parseLines(lines, list) {
+      const cases = [];
+      const headers = [];
+      const pendingHeaders = [];
+      let localId = 1;
+
+      for (const line of lines) {
+        const parsed = parseCaseItem(line);
+        if (parsed.isCase) {
+          // Add pending headers
+          headers.push(...pendingHeaders);
+          pendingHeaders.length = 0;
+
+          cases.push({
+            id: localId++,
+            listId: list.id,
+            title: parsed.title,
+            done: false,
+            metadata: {
+              isCase: true,
+              listNumber: parsed.listNumber,
+              caseNumber: parsed.caseNumber,
+              parties: parsed.parties
+            }
+          });
+        } else if (line.length > 3) {
+          pendingHeaders.push(line);
+        }
+      }
+
+      // Trailing headers
+      headers.push(...pendingHeaders);
+
+      // Convert headers to proper format with positions
+      const formattedHeaders = headers.map((text, idx) => ({
+        text: text,
+        beforeCase: idx === 0 && cases.length > 0 ? cases[0].metadata.listNumber : null,
+        afterCases: idx >= headers.length - pendingHeaders.length
+      }));
+
+      console.log(`Parsed ${cases.length} cases, ${formattedHeaders.length} headers`);
+      return { items: cases, headers: formattedHeaders };
+    }
+
+    // Load comment counts for courts.ie items by checking database
+    async function loadCommentCountsForItems(list, items) {
+      const commentCounts = {};
+
+      if (items.length === 0) return commentCounts;
+
+      try {
+        // Find if this list exists in database by source URL
+        const sourceUrl = list.metadata.sourceUrl;
+        const listResp = await fetch(
+          `${API}/lists?metadata->>source_url=eq.${encodeURIComponent(sourceUrl)}`,
+          { headers: authHeaders() }
+        );
+        const dbLists = await listResp.json();
+
+        if (dbLists.length === 0) return commentCounts;
+
+        const dbList = dbLists[0];
+
+        // Get all case numbers from items
+        const caseNumbers = items
+          .filter(i => i.metadata?.caseNumber)
+          .map(i => i.metadata.caseNumber);
+
+        if (caseNumbers.length === 0) return commentCounts;
+
+        // Fetch items from database for this list
+        const itemsResp = await fetch(
+          `${API}/items?list_id=eq.${dbList.id}`,
+          { headers: authHeaders() }
+        );
+        const dbItems = await itemsResp.json();
+
+        // Build map of case number to db item id
+        const caseToDbId = new Map();
+        dbItems.forEach(dbItem => {
+          if (dbItem.metadata?.case_number) {
+            caseToDbId.set(dbItem.metadata.case_number, dbItem.id);
+          }
+        });
+
+        // Map local items to db items
+        items.forEach(item => {
+          if (item.metadata?.caseNumber && caseToDbId.has(item.metadata.caseNumber)) {
+            itemIdMap.set(item.id, caseToDbId.get(item.metadata.caseNumber));
+          }
+        });
+
+        // Fetch comment counts for db items
+        const dbItemIds = Array.from(caseToDbId.values());
+        if (dbItemIds.length > 0) {
+          const commentsResp = await fetch(
+            `${API}/comments?item_id=in.(${dbItemIds.join(',')})`,
+            { headers: authHeaders() }
+          );
+          const comments = await commentsResp.json();
+
+          // Count per db item id
+          const dbCounts = {};
+          comments.forEach(c => {
+            dbCounts[c.item_id] = (dbCounts[c.item_id] || 0) + 1;
+          });
+
+          // Map back to local item ids
+          items.forEach(item => {
+            const dbId = itemIdMap.get(item.id);
+            if (dbId && dbCounts[dbId]) {
+              commentCounts[item.id] = dbCounts[dbId];
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Failed to load comment counts:', e);
+      }
+
+      return commentCounts;
+    }
+
+    // Render items in the table
+    function renderItems(items, headers, commentCounts) {
+      itemsBody.innerHTML = "";
 
       // Group headers by position
       const headersByPosition = {};
       headers.forEach(h => {
-        const pos = h.before_case || 'end';
+        const pos = h.beforeCase || 'end';
         if (!headersByPosition[pos]) headersByPosition[pos] = [];
         headersByPosition[pos].push(h.text);
       });
 
-      // Sort items by list_number from metadata
+      // Sort items by list_number
       const sortedItems = [...items].sort((a, b) => {
-        const aNum = a.metadata?.list_number || 999;
-        const bNum = b.metadata?.list_number || 999;
+        const aNum = a.metadata?.listNumber || 999;
+        const bNum = b.metadata?.listNumber || 999;
         return aNum - bNum;
       });
 
-      // Helper to render combined headers in a single row
+      // Helper to render headers
       function renderHeaders(texts) {
         const tr = document.createElement("tr");
         tr.className = "header-row";
@@ -576,13 +900,11 @@
         itemsBody.appendChild(tr);
       }
 
-      // Track which headers we've rendered
       const renderedPositions = new Set();
 
-      sortedItems.forEach((item) => {
-        const listNum = item.metadata?.list_number;
+      sortedItems.forEach(item => {
+        const listNum = item.metadata?.listNumber;
 
-        // Render any headers that should appear before this case
         if (listNum && headersByPosition[listNum] && !renderedPositions.has(listNum)) {
           renderHeaders(headersByPosition[listNum]);
           renderedPositions.add(listNum);
@@ -591,27 +913,13 @@
         const tr = document.createElement("tr");
         if (item.done) tr.classList.add("done");
 
-        // First column: undo button or empty
-        if (item.done) {
-          const undoBtn = document.createElement("button");
-          undoBtn.className = "undo-btn";
-          undoBtn.textContent = "\u21A9";
-          undoBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            setDone(item.id, false);
-          });
-          const td = document.createElement("td");
-          td.appendChild(undoBtn);
-          tr.appendChild(td);
-        } else {
-          tr.innerHTML = `<td></td>`;
-          tr.addEventListener("click", () => setDone(item.id, true));
-        }
+        // First column: list number
+        tr.innerHTML = `<td style="color: #666; width: 40px;">${listNum || ''}</td>`;
 
-        // Title and description columns
+        // Title column
         tr.insertAdjacentHTML("beforeend", `
           <td>${escapeHtml(item.title)}</td>
-          <td>${escapeHtml(item.description || "")}</td>
+          <td></td>
         `);
 
         // Chat button column
@@ -623,7 +931,7 @@
         chatBtn.title = count > 0 ? `${count} comment${count > 1 ? "s" : ""}` : "Start discussion";
         chatBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          openChat(item.id, item.title);
+          openChat(item);
         });
         chatTd.appendChild(chatBtn);
         tr.appendChild(chatTd);
@@ -631,41 +939,128 @@
         itemsBody.appendChild(tr);
       });
 
-      // Render any headers at the end (after_cases or position 'end')
       if (headersByPosition['end']) {
         renderHeaders(headersByPosition['end']);
       }
     }
 
-    // Set the done status of an item via PATCH. UI updates via WebSocket.
-    async function setDone(itemId, done) {
-      await fetch(`${API}/items?id=eq.${itemId}`, {
-        method: "PATCH",
-        headers: authHeaders(),
-        body: JSON.stringify({ done }),
-      });
+    // Ensure item exists in database (find or create)
+    async function ensureItemInDatabase(item) {
+      // Check if we already have a mapping
+      if (itemIdMap.has(item.id)) {
+        return itemIdMap.get(item.id);
+      }
+
+      if (!currentList) return null;
+
+      try {
+        // First, find or create the list in database
+        const sourceUrl = currentList.metadata.sourceUrl;
+        let listResp = await fetch(
+          `${API}/lists?metadata->>source_url=eq.${encodeURIComponent(sourceUrl)}`,
+          { headers: authHeaders() }
+        );
+        let dbLists = await listResp.json();
+
+        let dbListId;
+        if (dbLists.length === 0) {
+          // Create the list
+          const newList = {
+            name: currentList.name,
+            description: null,
+            metadata: {
+              date: currentList.metadata.date,
+              date_text: currentList.metadata.dateText,
+              venue: currentList.metadata.venue,
+              type: currentList.metadata.type,
+              source_url: sourceUrl,
+              headers: currentList.metadata.headers
+            }
+          };
+          const createResp = await fetch(`${API}/lists`, {
+            method: 'POST',
+            headers: { ...authHeaders(), 'Prefer': 'return=representation' },
+            body: JSON.stringify(newList)
+          });
+          const created = await createResp.json();
+          dbListId = created[0].id;
+        } else {
+          dbListId = dbLists[0].id;
+        }
+
+        // Now find or create the item
+        const caseNumber = item.metadata?.caseNumber;
+        if (caseNumber) {
+          const itemResp = await fetch(
+            `${API}/items?list_id=eq.${dbListId}&metadata->>case_number=eq.${encodeURIComponent(caseNumber)}`,
+            { headers: authHeaders() }
+          );
+          const dbItems = await itemResp.json();
+
+          if (dbItems.length > 0) {
+            itemIdMap.set(item.id, dbItems[0].id);
+            return dbItems[0].id;
+          }
+        }
+
+        // Create the item
+        const newItem = {
+          list_id: dbListId,
+          title: item.title,
+          done: false,
+          metadata: {
+            is_case: true,
+            list_number: item.metadata?.listNumber,
+            case_number: item.metadata?.caseNumber,
+            parties: item.metadata?.parties
+          }
+        };
+        const createItemResp = await fetch(`${API}/items`, {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Prefer': 'return=representation' },
+          body: JSON.stringify(newItem)
+        });
+        const createdItem = await createItemResp.json();
+        const dbItemId = createdItem[0].id;
+        itemIdMap.set(item.id, dbItemId);
+        return dbItemId;
+
+      } catch (e) {
+        console.error('Failed to ensure item in database:', e);
+        return null;
+      }
     }
 
     // Open chat panel for an item
-    async function openChat(itemId, itemTitle) {
-      currentChatItemId = itemId;
-      chatTitle.textContent = itemTitle;
+    async function openChat(item) {
+      currentChatItem = item;
+      chatTitle.textContent = item.title;
       chatOverlay.hidden = false;
       chatContent.focus();
-      await loadComments(itemId);
+      chatMessages.innerHTML = '<div class="chat-empty">Loading...</div>';
+
+      // Ensure item exists in database
+      const dbItemId = await ensureItemInDatabase(item);
+      if (!dbItemId) {
+        chatMessages.innerHTML = '<div class="chat-empty">Failed to connect to database.</div>';
+        return;
+      }
+      currentChatDbItemId = dbItemId;
+      await loadComments(dbItemId);
     }
 
     // Close chat panel
     function closeChat() {
       chatOverlay.hidden = true;
-      currentChatItemId = null;
+      currentChatItem = null;
+      currentChatDbItemId = null;
       chatContent.value = "";
     }
 
     // Fetch and render comments for an item
-    async function loadComments(itemId) {
+    async function loadComments(dbItemId) {
       chatMessages.innerHTML = "";
-      const resp = await fetch(`${API}/comments?item_id=eq.${itemId}&order=created_at`, { headers: authHeaders() });
+      const resp = await fetch(`${API}/comments?item_id=eq.${dbItemId}&order=created_at`, { headers: authHeaders() });
       const comments = await resp.json();
 
       if (comments.length === 0) {
@@ -738,12 +1133,12 @@
     async function sendComment() {
       const content = chatContent.value.trim();
 
-      if (!content || !currentChatItemId) return;
+      if (!content || !currentChatDbItemId) return;
 
       chatSend.disabled = true;
       try {
         const commentData = {
-          item_id: currentChatItemId,
+          item_id: currentChatDbItemId,
           author_name: currentUserName(),
           content: content
         };
@@ -780,43 +1175,30 @@
       return div.innerHTML;
     }
 
-    // Debounce loadItems so rapid WebSocket messages don't cause duplicates.
-    let reloadTimer = null;
-    function scheduleReload() {
-      clearTimeout(reloadTimer);
-      reloadTimer = setTimeout(() => loadItems(listSelect.value), 100);
-    }
-
     // Debounce comment reload
     let commentReloadTimer = null;
-    function scheduleCommentReload(itemId) {
+    function scheduleCommentReload(dbItemId) {
       clearTimeout(commentReloadTimer);
       commentReloadTimer = setTimeout(() => {
-        if (currentChatItemId === itemId) {
-          loadComments(itemId);
+        if (currentChatDbItemId === dbItemId) {
+          loadComments(dbItemId);
+        }
+        // Refresh item list to update comment counts
+        if (currentList && listSelect.value) {
+          loadItems(listSelect.value);
         }
       }, 100);
     }
 
-    // WebSocket connection for real-time updates with auto-reconnect.
+    // WebSocket connection for real-time comment updates
     function connectWS() {
       const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(`${wsProto}//${window.location.host}/ws`);
       ws.addEventListener("message", (event) => {
         const data = JSON.parse(event.data);
-        // Handle item changes
-        if (data.list_id !== undefined && data.item_id === undefined) {
-          if (listSelect.value && String(data.list_id) === listSelect.value) {
-            scheduleReload();
-          }
-        }
-        // Handle comment changes
+        // Handle comment changes - check if it matches any mapped item
         if (data.item_id !== undefined) {
           scheduleCommentReload(data.item_id);
-          // Also reload items to update comment counts
-          if (listSelect.value && String(data.list_id) === listSelect.value) {
-            scheduleReload();
-          }
         }
       });
       ws.addEventListener("close", () => setTimeout(connectWS, 2000));
@@ -825,7 +1207,7 @@
 
     // Event listeners
     listSelect.addEventListener("change", () => loadItems(listSelect.value));
-    dateFilter.addEventListener("change", filterLists);
+    dateFilter.addEventListener("change", () => loadListsForDate(dateFilter.value));
     venueFilter.addEventListener("change", filterLists);
     chatClose.addEventListener("click", closeChat);
     chatOverlay.addEventListener("click", (e) => {

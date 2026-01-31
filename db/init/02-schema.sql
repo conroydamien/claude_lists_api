@@ -1,27 +1,58 @@
--- Lists table. Each row represents a collection of items.
-CREATE TABLE lists (
-    id          SERIAL PRIMARY KEY,          -- Auto-incrementing unique identifier
-    name        TEXT NOT NULL,                -- Display name of the list
-    description TEXT,                         -- Optional longer description
-    metadata    JSONB,                        -- Flexible attributes (e.g. date, venue, type)
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Simplified schema for hybrid mode
+-- Cases are fetched from courts.ie, only comments and done status are stored locally
+
+-- Case status table: tracks done status by natural keys
+CREATE TABLE case_status (
+    list_source_url TEXT NOT NULL,
+    case_number TEXT NOT NULL,
+    done BOOLEAN NOT NULL DEFAULT false,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (list_source_url, case_number)
 );
 
--- GIN index for efficient JSONB queries on metadata
-CREATE INDEX lists_metadata_idx ON lists USING GIN (metadata);
-
--- List items table. Each row represents a single to-do/checklist entry.
-CREATE TABLE items (
-    id          SERIAL PRIMARY KEY,          -- Auto-incrementing unique identifier
-    list_id     INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE, -- Parent list
-    title       TEXT NOT NULL,                -- Short summary of the item
-    description TEXT,                         -- Optional longer description
-    done        BOOLEAN NOT NULL DEFAULT false, -- Completion status
-    metadata    JSONB,                        -- Parsed case data (case_number, parties, etc.)
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Comments table: references cases by natural keys
+CREATE TABLE comments (
+    id SERIAL PRIMARY KEY,
+    list_source_url TEXT NOT NULL,
+    case_number TEXT NOT NULL,
+    author_id TEXT,  -- JWT sub claim (user ID from Keycloak)
+    author_name TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- GIN index for efficient JSONB queries on item metadata
-CREATE INDEX items_metadata_idx ON items USING GIN (metadata);
+-- Index for efficient comment lookups by case
+CREATE INDEX comments_case_idx ON comments (list_source_url, case_number);
+
+-- Enable Row Level Security on comments
+ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+
+-- Authenticated users can read comments
+CREATE POLICY comments_select ON comments
+    FOR SELECT USING (true);
+
+-- Authenticated users can insert comments
+CREATE POLICY comments_insert ON comments
+    FOR INSERT WITH CHECK (true);
+
+-- Users can delete their own comments, admins can delete any comment
+CREATE POLICY comments_delete ON comments
+    FOR DELETE USING (
+        current_setting('request.jwt.claims', true)::json->>'role' = 'web_admin'
+        OR
+        (author_id IS NOT NULL AND
+         author_id = current_setting('request.jwt.claims', true)::json->>'sub')
+    );
+
+-- Force RLS for all roles
+ALTER TABLE comments FORCE ROW LEVEL SECURITY;
+
+-- Enable Row Level Security on case_status
+ALTER TABLE case_status ENABLE ROW LEVEL SECURITY;
+
+-- Authenticated users can read/write case status
+CREATE POLICY case_status_select ON case_status FOR SELECT USING (true);
+CREATE POLICY case_status_insert ON case_status FOR INSERT WITH CHECK (true);
+CREATE POLICY case_status_update ON case_status FOR UPDATE USING (true);
+
+ALTER TABLE case_status FORCE ROW LEVEL SECURITY;

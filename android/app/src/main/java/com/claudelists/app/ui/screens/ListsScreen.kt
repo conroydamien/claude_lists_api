@@ -161,28 +161,23 @@ fun ListsScreen(
     // Date picker dialog
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
+
+        // Auto-close when date is selected
+        LaunchedEffect(datePickerState.selectedDateMillis) {
+            datePickerState.selectedDateMillis?.let { millis ->
+                val date = java.time.Instant.ofEpochMilli(millis)
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDate()
+                    .toString()
+                onDateChange(date)
+                showDatePicker = false
+            }
+        }
+
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val date = java.time.Instant.ofEpochMilli(millis)
-                                .atZone(java.time.ZoneId.systemDefault())
-                                .toLocalDate()
-                                .toString()
-                            onDateChange(date)
-                        }
-                        showDatePicker = false
-                    }
-                ) {
-                    Text("OK")
-                }
-            },
+            confirmButton = {},  // No confirm button needed
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
-                }
                 TextButton(
                     onClick = {
                         onDateChange(null)

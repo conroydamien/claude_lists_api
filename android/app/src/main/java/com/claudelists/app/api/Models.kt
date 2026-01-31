@@ -7,8 +7,8 @@ data class CourtList(
     val name: String,
     val description: String?,
     val metadata: ListMetadata?,
-    @SerializedName("created_at") val createdAt: String,
-    @SerializedName("updated_at") val updatedAt: String
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
 )
 
 data class ListMetadata(
@@ -32,11 +32,11 @@ data class Item(
     val id: Int,
     @SerializedName("list_id") val listId: Int,
     val title: String,
-    val description: String?,
-    val done: Boolean,
+    val description: String? = null,
+    val done: Boolean = false,
     val metadata: ItemMetadata?,
-    @SerializedName("created_at") val createdAt: String,
-    @SerializedName("updated_at") val updatedAt: String
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
 )
 
 data class ItemMetadata(
@@ -58,6 +58,19 @@ data class Comment(
 
 data class ItemUpdate(
     val done: Boolean
+)
+
+data class ItemCreate(
+    @SerializedName("list_id") val listId: Int,
+    val title: String,
+    val done: Boolean = false,
+    val metadata: ItemMetadata?
+)
+
+data class ListCreate(
+    val name: String,
+    val description: String?,
+    val metadata: ListMetadata?
 )
 
 data class CommentCreate(

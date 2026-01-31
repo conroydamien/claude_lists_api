@@ -10,12 +10,20 @@ const PORT = process.env.PORT || 8080;
 const HTTPS_PORT = process.env.HTTPS_PORT || 8443;
 const API_URL = process.env.API_URL || "http://postgrest:3000";
 const WS_URL = process.env.WS_URL || "http://ws-sidecar:9000";
+const COURTS_IE_URL = "https://legaldiary.courts.ie";
 
 // Proxy /api/* to PostgREST (strips /api prefix)
 app.use("/api", createProxyMiddleware({
   target: API_URL,
   changeOrigin: true,
   pathRewrite: { "^/api": "" },
+}));
+
+// Proxy /courts-ie/* to legaldiary.courts.ie (strips /courts-ie prefix)
+app.use("/courts-ie", createProxyMiddleware({
+  target: COURTS_IE_URL,
+  changeOrigin: true,
+  pathRewrite: { "^/courts-ie": "" },
 }));
 
 // WebSocket proxy for /ws

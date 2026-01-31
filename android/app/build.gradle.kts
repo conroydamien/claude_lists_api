@@ -15,8 +15,9 @@ android {
         versionName = "1.0"
     }
 
-    flavorDimensions += "target"
+    flavorDimensions += listOf("target", "dataSource")
     productFlavors {
+        // Target device flavors
         create("emulator") {
             dimension = "target"
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/api\"")
@@ -27,6 +28,16 @@ android {
             // LAN IP for physical device testing
             buildConfigField("String", "API_BASE_URL", "\"http://192.168.0.189:8080/api\"")
             buildConfigField("String", "WS_BASE_URL", "\"ws://192.168.0.189:8080/ws\"")
+        }
+
+        // Data source flavors
+        create("api") {
+            dimension = "dataSource"
+            buildConfigField("Boolean", "USE_COURTS_IE_DIRECT", "false")
+        }
+        create("courtsie") {
+            dimension = "dataSource"
+            buildConfigField("Boolean", "USE_COURTS_IE_DIRECT", "true")
         }
     }
 
@@ -80,6 +91,9 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // HTML Parsing (for courts.ie)
+    implementation("org.jsoup:jsoup:1.17.2")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

@@ -54,9 +54,13 @@ fun ItemsScreen(
                             text = list.name,
                             style = MaterialTheme.typography.titleMedium
                         )
-                        list.metadata?.venue?.let { venue ->
+                        // Show venue and date
+                        val venue = list.metadata?.venue
+                        val date = list.metadata?.dateText
+                        val subtitle = listOfNotNull(venue, date).joinToString(" · ")
+                        if (subtitle.isNotEmpty()) {
                             Text(
-                                text = venue,
+                                text = subtitle,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
