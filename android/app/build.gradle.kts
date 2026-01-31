@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.20"
 }
 
 android {
@@ -13,32 +14,10 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-    }
 
-    flavorDimensions += listOf("target", "dataSource")
-    productFlavors {
-        // Target device flavors
-        create("emulator") {
-            dimension = "target"
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/api\"")
-            buildConfigField("String", "WS_BASE_URL", "\"ws://10.0.2.2:8080/ws\"")
-        }
-        create("phone") {
-            dimension = "target"
-            // LAN IP for physical device testing
-            buildConfigField("String", "API_BASE_URL", "\"http://192.168.0.189:8080/api\"")
-            buildConfigField("String", "WS_BASE_URL", "\"ws://192.168.0.189:8080/ws\"")
-        }
-
-        // Data source flavors
-        create("api") {
-            dimension = "dataSource"
-            buildConfigField("Boolean", "USE_COURTS_IE_DIRECT", "false")
-        }
-        create("courtsie") {
-            dimension = "dataSource"
-            buildConfigField("Boolean", "USE_COURTS_IE_DIRECT", "true")
-        }
+        // Supabase configuration - replace with your project values
+        buildConfigField("String", "SUPABASE_URL", "\"https://your-project.supabase.co\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"your-anon-key\"")
     }
 
     buildTypes {
@@ -86,14 +65,20 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.5")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
 
-    // Networking
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    // Supabase
+    implementation(platform("io.github.jan-tennert.supabase:bom:2.0.4"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt")
+    implementation("io.github.jan-tennert.supabase:realtime-kt")
+    implementation("io.github.jan-tennert.supabase:functions-kt")
 
-    // HTML Parsing (for courts.ie)
-    implementation("org.jsoup:jsoup:1.17.2")
+    // Ktor client for Supabase
+    implementation("io.ktor:ktor-client-android:2.3.7")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
+
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

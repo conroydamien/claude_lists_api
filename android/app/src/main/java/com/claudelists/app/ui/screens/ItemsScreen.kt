@@ -4,12 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,17 +18,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import android.util.Log
-import androidx.compose.material.icons.filled.Refresh
-import com.claudelists.app.api.CourtList
-import com.claudelists.app.api.Header
-import com.claudelists.app.api.Item
+import com.claudelists.app.api.CaseItem
 import com.claudelists.app.viewmodel.UiState
 
 private const val TAG = "ItemsScreen"
 
-sealed class ListItem {
-    data class HeaderItem(val texts: List<String>) : ListItem()
-    data class CaseItem(val item: Item, val commentCount: Int) : ListItem()
+sealed class DisplayItem {
+    data class HeaderItem(val text: String) : DisplayItem()
+    data class CaseDisplayItem(val item: CaseItem) : DisplayItem()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,14 +33,14 @@ sealed class ListItem {
 fun ItemsScreen(
     uiState: UiState,
     onBack: () -> Unit,
-    onToggleDone: (Item) -> Unit,
-    onOpenComments: (Item) -> Unit,
+    onToggleDone: (CaseItem) -> Unit,
+    onOpenComments: (CaseItem) -> Unit,
     onRefresh: () -> Unit = {}
 ) {
     val list = uiState.selectedList ?: return
 
-    // Build display items with headers interspersed
-    val displayItems = buildDisplayItems(uiState.items, uiState.headers, uiState.commentCounts)
+    // Build display items with headers
+    val displayItems = buildDisplayItems(uiState.items, uiState.headers)
 
     Scaffold(
         topBar = {
@@ -54,10 +51,7 @@ fun ItemsScreen(
                             text = list.name,
                             style = MaterialTheme.typography.titleMedium
                         )
-                        // Show venue and date
-                        val venue = list.metadata?.venue
-                        val date = list.metadata?.dateText
-                        val subtitle = listOfNotNull(venue, date).joinToString(" · ")
+                        val subtitle = listOfNotNull(list.venue, list.dateText).joinToString(" · ")
                         if (subtitle.isNotEmpty()) {
                             Text(
                                 text = subtitle,
@@ -113,27 +107,24 @@ fun ItemsScreen(
                     items = displayItems,
                     key = { index, displayItem ->
                         when (displayItem) {
-                            is ListItem.HeaderItem -> "header-$index"
-                            is ListItem.CaseItem -> "item-${displayItem.item.id}"
+                            is DisplayItem.HeaderItem -> "header-$index"
+                            is DisplayItem.CaseDisplayItem -> "item-${displayItem.item.id}"
                         }
                     }
                 ) { index, displayItem ->
                     when (displayItem) {
-                        is ListItem.HeaderItem -> {
-                            HeaderRow(texts = displayItem.texts)
+                        is DisplayItem.HeaderItem -> {
+                            HeaderRow(text = displayItem.text)
                         }
-                        is ListItem.CaseItem -> {
-                            // Get the current item from uiState to avoid stale captures
-                            val currentItem = uiState.items.find { it.id == displayItem.item.id } ?: displayItem.item
-                            val currentCommentCount = uiState.commentCounts[displayItem.item.id] ?: 0
+                        is DisplayItem.CaseDisplayItem -> {
+                            val item = displayItem.item
                             CaseRow(
-                                item = currentItem,
-                                commentCount = currentCommentCount,
+                                item = item,
                                 onToggleDone = {
-                                    Log.d(TAG, "onToggleDone clicked for item ${currentItem.id}, done=${currentItem.done}")
-                                    onToggleDone(currentItem)
+                                    Log.d(TAG, "onToggleDone clicked for item ${item.id}")
+                                    onToggleDone(item)
                                 },
-                                onOpenComments = { onOpenComments(currentItem) }
+                                onOpenComments = { onOpenComments(item) }
                             )
                         }
                     }
@@ -144,42 +135,26 @@ fun ItemsScreen(
 }
 
 private fun buildDisplayItems(
-    items: List<Item>,
-    headers: List<Header>,
-    commentCounts: Map<Int, Int>
-): List<ListItem> {
-    val result = mutableListOf<ListItem>()
+    items: List<CaseItem>,
+    headers: List<String>
+): List<DisplayItem> {
+    val result = mutableListOf<DisplayItem>()
 
-    // Group headers by position
-    val headersByPosition = headers.groupBy { it.beforeCase ?: -1 }
-    val renderedPositions = mutableSetOf<Int>()
-
-    for (item in items) {
-        val listNum = item.metadata?.listNumber
-
-        // Add headers before this case
-        if (listNum != null && headersByPosition.containsKey(listNum) && listNum !in renderedPositions) {
-            val texts = headersByPosition[listNum]?.map { it.text } ?: emptyList()
-            if (texts.isNotEmpty()) {
-                result.add(ListItem.HeaderItem(texts))
-            }
-            renderedPositions.add(listNum)
-        }
-
-        result.add(ListItem.CaseItem(item, commentCounts[item.id] ?: 0))
+    // Add headers at the top if any
+    if (headers.isNotEmpty()) {
+        result.add(DisplayItem.HeaderItem(headers.joinToString(" · ")))
     }
 
-    // Add any trailing headers
-    val endHeaders = headers.filter { it.afterCases == true || it.beforeCase == null }
-    if (endHeaders.isNotEmpty()) {
-        result.add(ListItem.HeaderItem(endHeaders.map { it.text }))
+    // Add all items
+    for (item in items) {
+        result.add(DisplayItem.CaseDisplayItem(item))
     }
 
     return result
 }
 
 @Composable
-fun HeaderRow(texts: List<String>) {
+fun HeaderRow(text: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color(0xFFF0F7FF)
@@ -198,7 +173,7 @@ fun HeaderRow(texts: List<String>) {
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = texts.joinToString(" · "),
+                text = text,
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF1565C0)
             )
@@ -206,11 +181,9 @@ fun HeaderRow(texts: List<String>) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaseRow(
-    item: Item,
-    commentCount: Int,
+    item: CaseItem,
     onToggleDone: () -> Unit,
     onOpenComments: () -> Unit
 ) {
@@ -249,7 +222,7 @@ fun CaseRow(
             }
 
             // List number
-            item.metadata?.listNumber?.let { num ->
+            item.listNumber?.let { num ->
                 Text(
                     text = "$num",
                     style = MaterialTheme.typography.bodyMedium,
@@ -277,8 +250,8 @@ fun CaseRow(
             ) {
                 BadgedBox(
                     badge = {
-                        if (commentCount > 0) {
-                            Badge { Text("$commentCount") }
+                        if (item.commentCount > 0) {
+                            Badge { Text("${item.commentCount}") }
                         }
                     }
                 ) {
@@ -286,11 +259,11 @@ fun CaseRow(
                         Icons.Default.ChatBubbleOutline,
                         contentDescription = "Comments",
                         modifier = Modifier.size(20.dp),
-                        tint = if (commentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (item.commentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
     }
-    Divider()
+    HorizontalDivider()
 }

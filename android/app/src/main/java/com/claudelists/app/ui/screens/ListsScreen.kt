@@ -214,7 +214,7 @@ fun ListCard(
                 style = MaterialTheme.typography.titleMedium
             )
 
-            list.metadata?.type?.let { type ->
+            list.type?.let { type ->
                 Text(
                     text = type,
                     style = MaterialTheme.typography.bodyMedium,
@@ -226,20 +226,18 @@ fun ListCard(
                 modifier = Modifier.padding(top = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                list.metadata?.venue?.let { venue ->
+                if (list.venue.isNotBlank()) {
                     Text(
-                        text = venue,
+                        text = list.venue,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                list.metadata?.dateText?.let { date ->
-                    Text(
-                        text = date,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = list.dateText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

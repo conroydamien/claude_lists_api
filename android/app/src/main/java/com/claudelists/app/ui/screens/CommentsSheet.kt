@@ -13,18 +13,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.claudelists.app.api.CaseItem
 import com.claudelists.app.api.Comment
-import com.claudelists.app.api.Item
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsSheet(
-    item: Item,
+    item: CaseItem,
     comments: List<Comment>,
     currentUserId: String,
-    isLoading: Boolean,
     onDismiss: () -> Unit,
     onSendComment: (String) -> Unit,
     onDeleteComment: (Comment) -> Unit
@@ -64,19 +63,10 @@ fun CommentsSheet(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            Divider()
+            HorizontalDivider()
 
             // Comments list
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else if (comments.isEmpty()) {
+            if (comments.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -101,14 +91,14 @@ fun CommentsSheet(
                     items(comments) { comment ->
                         CommentItem(
                             comment = comment,
-                            isOwn = comment.authorId == currentUserId,
+                            isOwn = comment.userId == currentUserId,
                             onDelete = { onDeleteComment(comment) }
                         )
                     }
                 }
             }
 
-            Divider()
+            HorizontalDivider()
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -157,11 +147,12 @@ fun CommentItem(
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
     val formattedDate = remember(comment.createdAt) {
         try {
+            val createdAt = comment.createdAt ?: return@remember ""
             val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-            val date = parser.parse(comment.createdAt.substringBefore("+"))
+            val date = parser.parse(createdAt.substringBefore("+").substringBefore("Z"))
             dateFormat.format(date ?: Date())
         } catch (e: Exception) {
-            comment.createdAt
+            comment.createdAt ?: ""
         }
     }
 

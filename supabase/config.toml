@@ -1,0 +1,31 @@
+# Supabase CLI configuration
+# See: https://supabase.com/docs/guides/cli/config
+
+[project]
+id = "your-project-id"  # Replace with your Supabase project ID
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["com.claudelists.app://callback"]
+jwt_expiry = 3600
+
+[auth.external.google]
+enabled = true
+
+[auth.external.azure]
+enabled = true
+
+[functions]
+enabled = true
