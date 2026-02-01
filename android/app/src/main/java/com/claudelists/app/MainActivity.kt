@@ -1,25 +1,63 @@
 package com.claudelists.app
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.claudelists.app.api.CaseItem
+import kotlinx.coroutines.launch
+import com.claudelists.app.ui.screens.ApprovalPendingScreen
 import com.claudelists.app.ui.screens.CommentsSheet
 import com.claudelists.app.ui.screens.ItemsScreen
 import com.claudelists.app.ui.screens.ListsScreen
+import com.claudelists.app.ui.screens.NotificationsScreen
+import com.claudelists.app.ui.screens.SignInScreen
 import com.claudelists.app.ui.theme.CourtListsTheme
 import com.claudelists.app.viewmodel.MainViewModel
 import java.time.LocalDate
 
+private const val TAG = "MainActivity"
+
 class MainActivity : ComponentActivity() {
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        Log.d(TAG, "Notification permission granted: $isGranted")
+    }
+
+    private val googleSignInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        Log.d(TAG, "Google Sign-In result: ${result.resultCode}")
+        lifecycleScope.launch {
+            val app = CourtListsApplication.instance
+            app.authManager.handleSignInResult(result.data)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Create notification channel
+        NotificationHelper.createNotificationChannel(this)
+
+        // Request notification permission on Android 13+
+        requestNotificationPermission()
+
+        // Handle notification deep link
+        handleIntent(intent)
 
         setContent {
             CourtListsTheme {
@@ -27,7 +65,48 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    CourtListsApp()
+                    CourtListsApp(
+                        onSignInWithGoogle = {
+                            val intent = CourtListsApplication.instance.authManager.getSignInIntent()
+                            googleSignInLauncher.launch(intent)
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        // Handle notification click - store for ViewModel to pick up
+        intent?.getStringExtra("list_source_url")?.let { listUrl ->
+            val caseNumber = intent.getStringExtra("case_number")
+            Log.d(TAG, "Notification click: list=$listUrl, case=$caseNumber")
+            pendingNavigation = PendingNavigation(listUrl, caseNumber)
+        }
+    }
+
+    data class PendingNavigation(val listSourceUrl: String, val caseNumber: String?)
+
+    companion object {
+        var pendingNavigation: PendingNavigation? = null
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permission already granted
+                }
+                else -> {
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
         }
@@ -36,14 +115,53 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun CourtListsApp(
-    viewModel: MainViewModel = viewModel()
+    viewModel: MainViewModel = viewModel(),
+    onSignInWithGoogle: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
-    // Load initial data
-    LaunchedEffect(Unit) {
-        if (uiState.lists.isEmpty() && !uiState.isLoading) {
+    // Show snackbar messages
+    LaunchedEffect(uiState.snackbarMessage) {
+        uiState.snackbarMessage?.let { message ->
+            snackbarHostState.showSnackbar(message, duration = androidx.compose.material3.SnackbarDuration.Short)
+            viewModel.clearSnackbar()
+        }
+    }
+
+    // Show sign-in screen if not authenticated
+    if (!uiState.isAuthenticated) {
+        SignInScreen(
+            onSignInWithGoogle = onSignInWithGoogle,
+            isLoading = uiState.isLoading,
+            error = uiState.error
+        )
+        return
+    }
+
+    // Show approval pending screen if authenticated but not approved
+    if (!uiState.isApproved) {
+        ApprovalPendingScreen(
+            userEmail = uiState.userEmail ?: "",
+            onSignOut = { viewModel.signOut() }
+        )
+        return
+    }
+
+    // Load initial data when authenticated and approved
+    LaunchedEffect(uiState.isApproved) {
+        if (uiState.isApproved && uiState.lists.isEmpty() && !uiState.isLoading) {
             viewModel.loadListsForDate(LocalDate.now().toString())
+        }
+    }
+
+    // Handle notification click navigation
+    LaunchedEffect(uiState.isApproved) {
+        if (uiState.isApproved) {
+            MainActivity.pendingNavigation?.let { nav ->
+                MainActivity.pendingNavigation = null
+                viewModel.navigateFromNotification(nav.listSourceUrl, nav.caseNumber)
+            }
         }
     }
 
@@ -54,22 +172,49 @@ fun CourtListsApp(
         }
     }
 
-    // Navigation based on selected list
-    if (uiState.selectedList != null) {
-        ItemsScreen(
-            uiState = uiState,
-            onBack = { viewModel.clearSelectedList() },
-            onToggleDone = { item -> viewModel.toggleDone(item) },
-            onOpenComments = { item -> viewModel.openComments(item) },
-            onRefresh = { viewModel.refreshItems() }
-        )
-    } else {
-        ListsScreen(
-            uiState = uiState,
-            onDateChange = { viewModel.setDateFilter(it) },
-            onVenueChange = { viewModel.setVenueFilter(it) },
-            onListSelect = { viewModel.selectList(it) }
-        )
+    // Wrap in Box with SnackbarHost for feedback messages
+    androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
+    // Navigation based on state
+    when {
+        uiState.showNotifications -> {
+            NotificationsScreen(
+                notifications = uiState.notifications,
+                onBack = { viewModel.hideNotifications() },
+                onNotificationClick = { notification ->
+                    viewModel.markNotificationRead(notification)
+                    viewModel.navigateToCase(
+                        notification.listSourceUrl,
+                        notification.caseNumber,
+                        notification.type
+                    )
+                    viewModel.hideNotifications()
+                },
+                onMarkAllRead = { viewModel.markAllNotificationsRead() }
+            )
+        }
+        uiState.selectedList != null -> {
+            ItemsScreen(
+                uiState = uiState,
+                onBack = { viewModel.clearSelectedList() },
+                onToggleDone = { item -> viewModel.toggleDone(item) },
+                onOpenComments = { item -> viewModel.openComments(item) },
+                onToggleWatch = { item -> viewModel.toggleWatch(item) },
+                isWatching = { item -> viewModel.isWatching(item.listSourceUrl, item.caseKey) },
+                onRefresh = { viewModel.refreshItems() },
+                onClearPendingAction = { viewModel.clearPendingAction() }
+            )
+        }
+        else -> {
+            ListsScreen(
+                uiState = uiState,
+                onDateChange = { viewModel.setDateFilter(it) },
+                onVenueChange = { viewModel.setVenueFilter(it) },
+                onListSelect = { viewModel.selectList(it) },
+                onSignOut = { viewModel.signOut() },
+                onNotificationsClick = { viewModel.showNotifications() },
+                unreadNotificationCount = uiState.unreadNotificationCount
+            )
+        }
     }
 
     // Comments bottom sheet
@@ -77,10 +222,17 @@ fun CourtListsApp(
         CommentsSheet(
             item = item,
             comments = uiState.comments,
-            currentUserId = uiState.user?.id ?: "",
+            currentUserId = uiState.userId ?: "",
             onDismiss = { viewModel.closeComments() },
             onSendComment = { content -> viewModel.sendComment(content) },
             onDeleteComment = { comment -> viewModel.deleteComment(comment) }
         )
     }
+
+    // Snackbar for feedback messages
+    androidx.compose.material3.SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
+    )
+    } // End Box
 }

@@ -1,19 +1,12 @@
 // Edge function to fetch and parse courts.ie listings
-// GET /listings?date=2024-01-29
+// POST /functions/v1/listings { "date": "YYYY-MM-DD" }
+//
+// Types defined in: supabase/shared/types.ts
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import type { DiaryEntry, ListingsRequest } from "../_shared/types.ts"
 
 const COURTS_IE_BASE = "https://legaldiary.courts.ie"
-
-interface DiaryEntry {
-  dateText: string
-  dateIso: string | null
-  venue: string
-  type: string
-  subtitle: string
-  updated: string
-  sourceUrl: string
-}
 
 // Parse date sort string (yyyymmdd) to ISO (yyyy-MM-dd)
 function parseDateSort(dateSort: string): string | null {
@@ -78,15 +71,23 @@ serve(async (req) => {
     return new Response('ok', {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Authorization, Content-Type',
       }
     })
   }
 
   try {
-    const url = new URL(req.url)
-    const date = url.searchParams.get('date')
+    let date: string | null = null
+
+    // Support both GET (query params) and POST (JSON body)
+    if (req.method === 'POST') {
+      const body = await req.json()
+      date = body.date
+    } else {
+      const url = new URL(req.url)
+      date = url.searchParams.get('date')
+    }
 
     if (!date) {
       return new Response(

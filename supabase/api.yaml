@@ -1,0 +1,546 @@
+openapi: 3.1.0
+info:
+  title: Court Lists API
+  description: |
+    API for the Court Lists application.
+
+    ## Architecture
+
+    - **Edge Functions**: Proxy to courts.ie for listings and case data
+    - **PostgREST**: Direct table access for comments, status, watched cases, notifications
+    - **Realtime**: WebSocket subscriptions for live updates
+
+    ## Type Definitions
+
+    Canonical type definitions: `supabase/functions/_shared/types.ts`
+
+    Android models should mirror these types: `android/app/src/main/java/com/claudelists/app/api/Models.kt`
+
+    ## Authentication
+
+    All endpoints require a valid Supabase JWT token in the Authorization header.
+    Users must have `app_metadata.approved = true` to access data.
+
+  version: 1.0.0
+
+servers:
+  - url: https://{project}.supabase.co
+    variables:
+      project:
+        default: your-project-ref
+        description: Supabase project reference
+
+security:
+  - bearerAuth: []
+
+paths:
+  /functions/v1/listings:
+    post:
+      summary: Get court listings for a date
+      description: Fetches and parses court listings from courts.ie for the specified date.
+      tags: [Edge Functions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingsRequest'
+      responses:
+        '200':
+          description: List of court listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiaryEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /functions/v1/cases:
+    post:
+      summary: Get cases for a court listing
+      description: Fetches and parses individual cases from a courts.ie listing page.
+      tags: [Edge Functions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CasesRequest'
+      responses:
+        '200':
+          description: Parsed cases and headers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /rest/v1/comments:
+    get:
+      summary: Get comments for a case
+      tags: [PostgREST]
+      parameters:
+        - name: list_source_url
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Filter by list source URL (eq.{url})
+        - name: case_number
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Filter by case number (eq.{case_number})
+        - name: order
+          in: query
+          schema:
+            type: string
+            default: created_at.asc
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+    post:
+      summary: Add a comment to a case
+      tags: [PostgREST]
+      description: |
+        Creates a comment and automatically:
+        - Adds the case to user's watched list (if not already)
+        - Creates notifications for other watchers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentInsert'
+      responses:
+        '201':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+  /rest/v1/comments/{id}:
+    delete:
+      summary: Delete a comment
+      tags: [PostgREST]
+      description: Users can only delete their own comments.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Comment deleted
+
+  /rest/v1/case_status:
+    get:
+      summary: Get done status for cases
+      tags: [PostgREST]
+      parameters:
+        - name: list_source_url
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: case_number
+          in: query
+          schema:
+            type: string
+          description: Filter by case number(s) (in.(case1,case2,...))
+      responses:
+        '200':
+          description: List of case statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CaseStatus'
+    post:
+      summary: Set case done status (upsert)
+      tags: [PostgREST]
+      description: |
+        Creates or updates case status. Triggers notifications for watchers
+        when done status changes.
+      headers:
+        Prefer:
+          schema:
+            type: string
+            example: resolution=merge-duplicates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseStatusUpsert'
+      responses:
+        '201':
+          description: Status created/updated
+
+  /rest/v1/watched_cases:
+    get:
+      summary: Get user's watched cases
+      tags: [PostgREST]
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+          description: Filter by user ID (eq.{user_id})
+      responses:
+        '200':
+          description: List of watched cases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WatchedCase'
+    post:
+      summary: Watch a case
+      tags: [PostgREST]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchedCaseInsert'
+      responses:
+        '201':
+          description: Watch created
+    delete:
+      summary: Unwatch a case
+      tags: [PostgREST]
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: list_source_url
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: case_number
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Watch removed
+
+  /rest/v1/notifications:
+    get:
+      summary: Get user's notifications
+      tags: [PostgREST]
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: order
+          in: query
+          schema:
+            type: string
+            default: created_at.desc
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AppNotification'
+    patch:
+      summary: Mark notifications as read
+      tags: [PostgREST]
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          description: Filter by ID (eq.{id}) or user_id for bulk update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                read:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: Notifications updated
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWT token
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+  schemas:
+    # Edge Function schemas
+    ListingsRequest:
+      type: object
+      required: [date]
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2024-01-29"
+          description: ISO date format (YYYY-MM-DD)
+
+    DiaryEntry:
+      type: object
+      properties:
+        dateText:
+          type: string
+          example: "29 January 2024"
+        dateIso:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-01-29"
+        venue:
+          type: string
+          example: "Dublin Circuit Court"
+        type:
+          type: string
+          example: "Criminal"
+        subtitle:
+          type: string
+          example: "Judge Smith - Court 1"
+        updated:
+          type: string
+          example: "28 Jan 2024 15:30"
+        sourceUrl:
+          type: string
+          format: uri
+          example: "https://legaldiary.courts.ie/..."
+
+    CasesRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Source URL from DiaryEntry.sourceUrl
+
+    CasesResponse:
+      type: object
+      properties:
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParsedCase'
+        headers:
+          type: array
+          items:
+            type: string
+          description: Section headers found in the list
+
+    ParsedCase:
+      type: object
+      properties:
+        listNumber:
+          type: integer
+          nullable: true
+          example: 1
+        caseNumber:
+          type: string
+          nullable: true
+          example: "2024/1234"
+        title:
+          type: string
+          description: Full raw line text
+        parties:
+          type: string
+          nullable: true
+          example: "Smith v Jones"
+        isCase:
+          type: boolean
+          description: True if case, false if header
+
+    # PostgREST schemas
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        list_source_url:
+          type: string
+        case_number:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+        author_name:
+          type: string
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CommentInsert:
+      type: object
+      required: [list_source_url, case_number, author_name, content]
+      properties:
+        list_source_url:
+          type: string
+        case_number:
+          type: string
+        author_name:
+          type: string
+        content:
+          type: string
+
+    CaseStatus:
+      type: object
+      properties:
+        list_source_url:
+          type: string
+        case_number:
+          type: string
+        done:
+          type: boolean
+        updated_by:
+          type: string
+          format: uuid
+        updated_at:
+          type: string
+          format: date-time
+
+    CaseStatusUpsert:
+      type: object
+      required: [list_source_url, case_number, done]
+      properties:
+        list_source_url:
+          type: string
+        case_number:
+          type: string
+        done:
+          type: boolean
+        updated_by:
+          type: string
+          format: uuid
+
+    WatchedCase:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: string
+          format: uuid
+        list_source_url:
+          type: string
+        case_number:
+          type: string
+        source:
+          type: string
+          enum: [manual, auto]
+        created_at:
+          type: string
+          format: date-time
+
+    WatchedCaseInsert:
+      type: object
+      required: [user_id, list_source_url, case_number]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        list_source_url:
+          type: string
+        case_number:
+          type: string
+        source:
+          type: string
+          enum: [manual, auto]
+          default: manual
+
+    AppNotification:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [comment, status_done, status_undone]
+        list_source_url:
+          type: string
+        case_number:
+          type: string
+        case_title:
+          type: string
+          nullable: true
+        actor_name:
+          type: string
+        actor_id:
+          type: string
+          format: uuid
+          nullable: true
+        content:
+          type: string
+          nullable: true
+          description: Comment content for 'comment' type
+        read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time

@@ -63,7 +63,7 @@ fun CommentsSheet(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            HorizontalDivider()
+            Divider()
 
             // Comments list
             if (comments.isEmpty()) {
@@ -98,7 +98,7 @@ fun CommentsSheet(
                 }
             }
 
-            HorizontalDivider()
+            Divider()
 
             Spacer(modifier = Modifier.height(16.dp))
 

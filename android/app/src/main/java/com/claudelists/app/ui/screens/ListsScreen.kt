@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,14 +23,50 @@ fun ListsScreen(
     uiState: UiState,
     onDateChange: (String?) -> Unit,
     onVenueChange: (String?) -> Unit,
-    onListSelect: (CourtList) -> Unit
+    onListSelect: (CourtList) -> Unit,
+    onSignOut: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
+    unreadNotificationCount: Int = 0
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     var venueExpanded by remember { mutableStateOf(false) }
 
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Court Lists") },
+                actions = {
+                    // Notification bell with badge
+                    IconButton(onClick = onNotificationsClick) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadNotificationCount > 0) {
+                                    Badge {
+                                        Text(
+                                            if (unreadNotificationCount > 99) "99+"
+                                            else unreadNotificationCount.toString()
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = "Notifications"
+                            )
+                        }
+                    }
+                    IconButton(onClick = onSignOut) {
+                        Icon(Icons.Default.Logout, contentDescription = "Sign Out")
+                    }
+                }
+            )
+        }
+    ) { padding ->
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(padding)
             .padding(16.dp)
     ) {
         // Filters row
@@ -156,6 +194,7 @@ fun ListsScreen(
                 }
             }
         }
+    }
     }
 
     // Date picker dialog

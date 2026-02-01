@@ -1,20 +1,10 @@
 // Edge function to fetch and parse courts.ie case detail page
-// GET /cases?url=<source_url>
+// POST /functions/v1/cases { "url": "<source_url>" }
+//
+// Types defined in: supabase/shared/types.ts
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-
-interface ParsedCase {
-  listNumber: number | null
-  caseNumber: string | null
-  title: string
-  parties: string | null
-  isCase: boolean
-}
-
-interface CasesResponse {
-  cases: ParsedCase[]
-  headers: string[]
-}
+import type { ParsedCase, CasesResponse, CasesRequest } from "../_shared/types.ts"
 
 // Multiple case number patterns for different courts
 const caseNumberPatterns = [
@@ -143,15 +133,23 @@ serve(async (req) => {
     return new Response('ok', {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Authorization, Content-Type',
       }
     })
   }
 
   try {
-    const reqUrl = new URL(req.url)
-    const sourceUrl = reqUrl.searchParams.get('url')
+    let sourceUrl: string | null = null
+
+    // Support both GET (query params) and POST (JSON body)
+    if (req.method === 'POST') {
+      const body = await req.json()
+      sourceUrl = body.url
+    } else {
+      const reqUrl = new URL(req.url)
+      sourceUrl = reqUrl.searchParams.get('url')
+    }
 
     if (!sourceUrl) {
       return new Response(

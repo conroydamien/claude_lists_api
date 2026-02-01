@@ -15,9 +15,11 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // Supabase configuration - replace with your project values
-        buildConfigField("String", "SUPABASE_URL", "\"https://your-project.supabase.co\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"your-anon-key\"")
+        // API configuration
+        buildConfigField("String", "API_BASE_URL", "\"https://fbiissfiqgtlenxkjuwv.supabase.co\"")
+        buildConfigField("String", "API_ANON_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiaWlzc2ZpcWd0bGVueGtqdXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzMTU1NDYsImV4cCI6MjA4MDg5MTU0Nn0.QlPzr2rxOihNz-NeaLdivG2ItDOX6Qz84yIsKU0Mc2E\"")
+        // Google Web Client ID from Supabase Dashboard -> Auth -> Providers -> Google
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"807765424446-ofrgb5gs9l0lo8usfj37258iuj93cfdd.apps.googleusercontent.com\"")
     }
 
     buildTypes {
@@ -37,6 +39,9 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+        freeCompilerArgs += listOf(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
+        )
     }
 
     buildFeatures {
@@ -65,23 +70,24 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.5")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
 
-    // Supabase
-    implementation(platform("io.github.jan-tennert.supabase:bom:2.0.4"))
-    implementation("io.github.jan-tennert.supabase:postgrest-kt")
-    implementation("io.github.jan-tennert.supabase:gotrue-kt")
-    implementation("io.github.jan-tennert.supabase:realtime-kt")
-    implementation("io.github.jan-tennert.supabase:functions-kt")
-
-    // Ktor client for Supabase
-    implementation("io.ktor:ktor-client-android:2.3.7")
+    // Ktor HTTP client
+    implementation("io.ktor:ktor-client-okhttp:2.3.7")
     implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
+    implementation("io.ktor:ktor-client-websockets:2.3.7")
+    implementation("io.ktor:ktor-client-logging:2.3.7")
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Google Sign-In (native UI)
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+
+    // Secure storage for tokens
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")

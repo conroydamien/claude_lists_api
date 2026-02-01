@@ -1,98 +1,347 @@
-@startuml Claude Lists API Architecture
+@startuml component-diagram
+!theme plain
+title Court Lists - Component Architecture
 
-skinparam componentStyle rectangle
+package "Android App" {
+    [CourtListsApplication] as App
+    [MainViewModel] as VM
+    [Compose UI] as UI
+    
+    package "API Layer" {
+        [CourtListsApi] as RestApi
+        [RealtimeClient] as WsClient
+        [AuthManager] as Auth
+    }
 
-actor "Client" as client
-
-node "Podman Compose" {
-    component "Web App\n(HTTP 8080 / HTTPS 8443)" as web
-    component "PostgREST\n(port 3000)" as postgrest
-    component "WS Sidecar\n(port 9000)" as wssidecar
-    component "Keycloak\n(port 8180)" as keycloak
-    component "Courts Seeder\n(one-shot)" as seeder
-    cloud "courts.ie\nLegal Diary" as courts
-    database "PostgreSQL 16\n(port 5433)" as db
-
-    web --> postgrest : "/api/* proxy"
-    web --> keycloak : "OAuth2/OIDC\nlogin flow"
-    seeder --> postgrest : "POST seed data\non startup"
-    seeder --> courts : "fetch diary\nentries (cached)"
-    postgrest --> db : "connects as\nclaude_lists user"
-    keycloak --> db : "connects as\nkeycloak user"
-    db --> wssidecar : "LISTEN/NOTIFY\nitems_changed,\ncomments_changed"
+    UI --> VM : observes state
+    VM --> RestApi : REST calls
+    VM --> Auth : auth state
+    App --> WsClient : WebSocket
+    App ..> VM : SharedFlow events
+    RestApi --> Auth : get token
+    WsClient --> Auth : get token
 }
 
-client --> web : "HTTPS :8443\n(or HTTP :8080)"
-client --> wssidecar : "WebSocket\nport 9000"
-client --> keycloak : "login redirect\nport 8180"
+cloud "Backend API" {
+    package "Edge Functions" {
+        [/listings] as ListingsFn
+        [/cases] as CasesFn
+    }
 
-note left of client
-  LAN access requires
-  socat port forwarding
-  (see lan-proxy.sh)
+    database "PostgreSQL" {
+        [comments] as CommentsTable
+        [case_status] as StatusTable
+        [watched_cases] as WatchedTable
+        [notifications] as NotifTable
+
+        [Triggers] as Triggers
+    }
+
+    [Realtime WS] as RT
+    [Auth /auth/v1] as AuthApi
+    [PostgREST /rest/v1] as REST
+
+    Triggers --> NotifTable : creates
+    CommentsTable --> Triggers : on insert
+    StatusTable --> Triggers : on update
+
+    RT --> CommentsTable : monitors
+    RT --> StatusTable : monitors
+    RT --> NotifTable : monitors
+    RT --> WatchedTable : monitors
+}
+
+cloud "courts.ie" {
+    [Legal Diary] as Courts
+}
+
+Auth --> AuthApi : OAuth2 PKCE
+RestApi --> ListingsFn : POST /functions/v1/listings
+RestApi --> CasesFn : POST /functions/v1/cases
+RestApi --> REST : CRUD operations
+WsClient <-- RT : WebSocket
+
+ListingsFn --> Courts : scrape
+CasesFn --> Courts : scrape
+
+@enduml
+
+
+@startuml sequence-auth
+!theme plain
+title Authentication Flow (OAuth2 PKCE)
+
+actor User
+participant "Android App" as App
+participant "AuthManager" as Auth
+participant "CustomTab\n(Browser)" as Browser
+participant "/auth/v1" as AuthApi
+participant "Google OAuth" as Google
+
+User -> App: Tap "Sign in with Google"
+App -> Auth: signInWithGoogle()
+Auth -> Auth: Generate PKCE\ncode_verifier + code_challenge
+Auth -> Browser: Open /auth/v1/authorize\n?provider=google&code_challenge=...
+Browser -> AuthApi: GET /authorize
+AuthApi -> Google: OAuth redirect
+User <-> Google: Authenticate
+Google -> AuthApi: OAuth callback
+AuthApi -> Browser: Redirect to\ncom.claudelists.app://callback?code=...
+Browser -> App: Deep link callback
+App -> Auth: handleCallback(uri)
+Auth -> AuthApi: POST /auth/v1/token\n{code, code_verifier}
+AuthApi --> Auth: {access_token, refresh_token, user}
+Auth -> Auth: Store in EncryptedSharedPreferences
+Auth -> Auth: Update authState flow
+Auth --> App: success
+
+@enduml
+
+
+@startuml sequence-listings
+!theme plain
+title Load Listings Flow
+
+actor User
+participant "Android App" as App
+participant "CourtListsApi" as Api
+participant "Edge Function\n/listings" as Listings
+participant "courts.ie" as Courts
+participant "PostgREST\n/rest/v1" as REST
+
+User -> App: Select date
+App -> Api: getListings(date)
+Api -> Listings: POST /functions/v1/listings\n{date: "2024-01-29"}
+Listings -> Courts: GET /legaldiary.nsf/...
+Courts --> Listings: HTML page
+Listings -> Listings: Parse HTML
+Listings --> Api: DiaryEntry[]
+Api --> App: List<DiaryEntry>
+
+User -> App: Select listing
+App -> Api: getCases(url)
+Api --> App: CasesResponse
+
+App -> Api: getCaseStatuses(url, caseNumbers)
+Api -> REST: GET /case_status?...
+REST --> Api: CaseStatus[]
+
+App -> Api: getCommentCounts(url, caseNumbers)
+Api -> REST: GET /comments?...
+REST --> Api: Comment[]
+
+App -> User: Display cases with status
+
+@enduml
+
+
+@startuml sequence-notification
+!theme plain
+title Notification Flow
+
+actor "User A\n(Watcher)" as UserA
+actor "User B\n(Actor)" as UserB
+participant "App A\n(RealtimeClient)" as AppA
+participant "App B\n(CourtListsApi)" as AppB
+participant "PostgREST" as REST
+database "PostgreSQL" as DB
+participant "Realtime WS" as RT
+
+== Setup: User A watches case ==
+UserA -> AppA: Watch case X
+AppA -> REST: POST /watched_cases
+REST -> DB: INSERT watched_cases
+
+== User B acts on case ==
+UserB -> AppB: Add comment on case X
+AppB -> REST: POST /comments
+REST -> DB: INSERT comments
+
+== Trigger creates notification ==
+DB -> DB: on_comment_insert_notify()
+DB -> DB: INSERT notifications\n(for User A)
+
+== Realtime broadcasts ==
+DB -> RT: postgres_changes
+RT -> AppA: WebSocket frame\n{table: notifications, type: INSERT}
+
+== App shows notification ==
+AppA -> AppA: Parse notification
+AppA -> AppA: NotificationHelper.show()
+AppA -> UserA: System notification\n(buzz + popup)
+
+@enduml
+
+
+@startuml sequence-realtime-detail
+!theme plain
+title WebSocket Realtime Subscription
+
+participant "CourtListsApplication" as App
+participant "RealtimeClient" as WS
+participant "MainViewModel" as VM
+participant "Realtime /realtime/v1" as RT
+database "PostgreSQL" as DB
+
+== Application Startup ==
+App -> App: onCreate()
+App -> WS: create RealtimeClient
+
+== After Authentication ==
+VM -> App: setupRealtimeIfNeeded()
+App -> WS: connect()
+WS -> RT: WebSocket connect\n/realtime/v1/websocket
+WS -> RT: send access_token
+WS -> RT: phx_join postgres_changes\nconfig: [case_status, comments,\nnotifications, watched_cases]
+RT --> WS: phx_reply ok
+
+== Event Flow ==
+DB -> RT: case_status UPDATE
+RT -> WS: postgres_changes frame
+WS -> WS: Parse, emit to statusChangeEvents
+App -> App: SharedFlow collect
+App -> VM: emit Unit
+VM -> VM: handleStatusChange()
+
+DB -> RT: notifications INSERT
+RT -> WS: postgres_changes frame
+WS -> WS: Parse NotificationChange
+App -> App: Show system notification
+App -> VM: emit NotificationEvent
+VM -> VM: loadNotifications()
+
+@enduml
+
+
+@startuml class-diagram
+!theme plain
+title Android API Layer
+
+package "API Layer" {
+    class CourtListsApi {
+        -httpClient: HttpClient
+        -authManager: AuthManager
+        +getListings(date): List<DiaryEntry>
+        +getCases(url): CasesResponse
+        +getComments(...): List<Comment>
+        +addComment(comment)
+        +getCaseStatuses(...): List<CaseStatus>
+        +upsertCaseStatus(status)
+        +getWatchedCases(userId): List<WatchedCase>
+        +watchCase(case)
+        +unwatchCase(...)
+        +getNotifications(userId): List<AppNotification>
+        +markNotificationRead(id)
+    }
+
+    class RealtimeClient {
+        -wsClient: HttpClient
+        -authManager: AuthManager
+        +statusChangeEvents: SharedFlow<PostgresChange>
+        +commentChangeEvents: SharedFlow<PostgresChange>
+        +notificationEvents: SharedFlow<NotificationChange>
+        +watchedCaseEvents: SharedFlow<PostgresChange>
+        +connectionState: StateFlow<ConnectionState>
+        +connect()
+        +disconnect()
+    }
+
+    class AuthManager {
+        -prefs: EncryptedSharedPreferences
+        +authState: StateFlow<AuthState>
+        +getAccessToken(): String?
+        +getUserId(): String?
+        +signInWithGoogle(context)
+        +handleCallback(uri): Boolean
+        +refreshToken(): Boolean
+        +signOut()
+    }
+
+    class AuthState {
+        isAuthenticated: Boolean
+        isApproved: Boolean
+        userId: String?
+        userEmail: String?
+    }
+
+    CourtListsApi --> AuthManager : uses
+    RealtimeClient --> AuthManager : uses
+    AuthManager --> AuthState : emits
+}
+
+@enduml
+
+
+@startuml database-erd
+!theme plain
+title Database Schema
+
+entity "auth.users" as users {
+    * id : UUID <<PK>>
+    --
+    email : TEXT
+    app_metadata : JSONB
+}
+
+entity "comments" as comments {
+    * id : BIGINT <<PK>>
+    --
+    * list_source_url : TEXT
+    * case_number : TEXT
+    user_id : UUID <<FK>>
+    * author_name : TEXT
+    * content : TEXT
+    created_at : TIMESTAMPTZ
+}
+
+entity "case_status" as status {
+    * list_source_url : TEXT <<PK>>
+    * case_number : TEXT <<PK>>
+    --
+    done : BOOLEAN
+    updated_by : UUID <<FK>>
+    updated_at : TIMESTAMPTZ
+}
+
+entity "watched_cases" as watched {
+    * id : BIGINT <<PK>>
+    --
+    * user_id : UUID <<FK>>
+    * list_source_url : TEXT
+    * case_number : TEXT
+    source : TEXT
+    created_at : TIMESTAMPTZ
+    <<unique>> (user_id, list_source_url, case_number)
+}
+
+entity "notifications" as notif {
+    * id : BIGINT <<PK>>
+    --
+    * user_id : UUID <<FK>>
+    * type : TEXT
+    * list_source_url : TEXT
+    * case_number : TEXT
+    case_title : TEXT
+    * actor_name : TEXT
+    actor_id : UUID <<FK>>
+    content : TEXT
+    read : BOOLEAN
+    * created_at : TIMESTAMPTZ
+}
+
+users ||--o{ comments : "writes"
+users ||--o{ status : "updates"
+users ||--o{ watched : "watches"
+users ||--o{ notif : "receives"
+users ||--o{ notif : "triggers (actor)"
+
+note right of comments
+    Trigger: on_comment_insert_auto_watch
+    Trigger: on_comment_insert_notify
 end note
 
-note right of db
-  Databases:
-    - claude_lists (app data)
-    - keycloak (identity data)
-  Roles:
-    - claude_lists (owner)
-    - web_anon (no access)
-    - web_user (authenticated CRUD)
-    - web_admin (can delete any comment)
-    - keycloak (Keycloak owner)
-end note
-
-note bottom of db
-  Tables:
-    - lists (id, name, description,
-             metadata JSONB, timestamps)
-    - items (id, list_id FK->lists,
-             title, description, done,
-             metadata JSONB, timestamps)
-    - comments (id, item_id FK->items,
-             author_id, author_name,
-             content, created_at)
-             RLS: delete own only
-  Triggers:
-    - items_changed (AFTER INSERT/
-      UPDATE/DELETE on items)
-    - comments_changed (AFTER INSERT/
-      UPDATE/DELETE on comments)
-end note
-
-note right of postgrest
-  JWT validated via JWKS
-  Role from token claim
-end note
-
-note right of keycloak
-  Realm: claude-lists
-  Users: alice, bob, charlie, admin
-  Roles: web_user, web_admin
-  JWT claims: sub, role,
-  preferred_username
-  Data persisted in PostgreSQL
-end note
-
-note right of wssidecar
-  Broadcasts item changes
-  to connected WebSocket clients
-end note
-
-note right of seeder
-  Fetches Irish Courts legal diary
-  from courts.ie, caches HTML,
-  parses cases & headers, loads
-  via REST API. Runs on startup
-  if DB is empty.
-end note
-
-note left of web
-  HTTPS with self-signed cert
-  API proxy avoids mixed content
-  Static files + Express server
+note right of status
+    Trigger: on_status_change_notify
 end note
 
 @enduml

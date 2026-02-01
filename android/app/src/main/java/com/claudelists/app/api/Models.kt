@@ -1,7 +1,23 @@
 package com.claudelists.app.api
 
+/**
+ * Data models for Court Lists API
+ *
+ * These types mirror the definitions in: supabase/functions/_shared/types.ts
+ * Keep in sync when modifying API contracts.
+ *
+ * See also: supabase/api.yaml (OpenAPI spec)
+ */
+
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
+// Request models for Edge Functions
+@Serializable
+data class ListingsRequest(val date: String)
+
+@Serializable
+data class CasesRequest(val url: String)
 
 // Response from /functions/v1/listings
 @Serializable
@@ -104,3 +120,30 @@ data class CaseItem(
         }
     }
 }
+
+// Watched case record
+@Serializable
+data class WatchedCase(
+    val id: Long? = null,
+    @SerialName("user_id") val userId: String,
+    @SerialName("list_source_url") val listSourceUrl: String,
+    @SerialName("case_number") val caseNumber: String,
+    val source: String = "manual",
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+// In-app notification (delivered via WebSocket realtime)
+@Serializable
+data class AppNotification(
+    val id: Long,
+    @SerialName("user_id") val userId: String,
+    val type: String, // 'comment', 'status_done', 'status_undone'
+    @SerialName("list_source_url") val listSourceUrl: String,
+    @SerialName("case_number") val caseNumber: String,
+    @SerialName("case_title") val caseTitle: String? = null,
+    @SerialName("actor_name") val actorName: String,
+    @SerialName("actor_id") val actorId: String? = null,
+    val content: String? = null,
+    val read: Boolean = false,
+    @SerialName("created_at") val createdAt: String
+)
