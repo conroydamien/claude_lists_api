@@ -78,14 +78,15 @@ class CourtListsApi(
             header("Accept", "application/json")
             parameter("list_source_url", "eq.$listSourceUrl")
             parameter("case_number", "in.($inClause)")
-            parameter("select", "case_number")
+            parameter("select", "case_number,urgent")
         }
         return response.body()
     }
 
     @kotlinx.serialization.Serializable
     data class CommentCount(
-        @kotlinx.serialization.SerialName("case_number") val caseNumber: String
+        @kotlinx.serialization.SerialName("case_number") val caseNumber: String,
+        val urgent: Boolean = false
     )
 
     /** Add a comment */

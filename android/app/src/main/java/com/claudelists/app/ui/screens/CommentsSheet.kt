@@ -7,7 +7,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,10 +26,11 @@ fun CommentsSheet(
     comments: List<Comment>,
     currentUserId: String,
     onDismiss: () -> Unit,
-    onSendComment: (String) -> Unit,
+    onSendComment: (String, Boolean) -> Unit,
     onDeleteComment: (Comment) -> Unit
 ) {
     var commentText by remember { mutableStateOf("") }
+    var isUrgent by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -101,6 +104,36 @@ fun CommentsSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Urgency toggle - red raised hand
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.PanTool,
+                    contentDescription = "Need help",
+                    modifier = Modifier.size(20.dp),
+                    tint = if (isUrgent) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Need help",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isUrgent) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = isUrgent,
+                    onCheckedChange = { isUrgent = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color(0xFFD32F2F),
+                        checkedTrackColor = Color(0xFFD32F2F).copy(alpha = 0.5f)
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Input field
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -117,8 +150,9 @@ fun CommentsSheet(
                 IconButton(
                     onClick = {
                         if (commentText.isNotBlank()) {
-                            onSendComment(commentText)
+                            onSendComment(commentText, isUrgent)
                             commentText = ""
+                            isUrgent = false
                         }
                     },
                     enabled = commentText.isNotBlank()
@@ -158,10 +192,11 @@ fun CommentItem(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isOwn)
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            else
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = when {
+                comment.urgent -> Color(0xFFD32F2F).copy(alpha = 0.1f)
+                isOwn -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            }
         )
     ) {
         Column(
@@ -173,6 +208,15 @@ fun CommentItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (comment.urgent) {
+                        Icon(
+                            Icons.Default.PanTool,
+                            contentDescription = "Needs help",
+                            modifier = Modifier.size(14.dp),
+                            tint = Color(0xFFD32F2F)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
                     Text(
                         text = comment.authorName,
                         style = MaterialTheme.typography.labelMedium,

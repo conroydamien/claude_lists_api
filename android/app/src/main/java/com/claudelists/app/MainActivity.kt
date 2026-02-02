@@ -223,7 +223,7 @@ fun CourtListsApp(
             comments = uiState.comments,
             currentUserId = uiState.userId ?: "",
             onDismiss = { viewModel.closeComments() },
-            onSendComment = { content -> viewModel.sendComment(content) },
+            onSendComment = { content, urgent -> viewModel.sendComment(content, urgent) },
             onDeleteComment = { comment -> viewModel.deleteComment(comment) }
         )
     }
@@ -242,7 +242,7 @@ fun CourtListsApp(
             comments = uiState.comments,
             currentUserId = uiState.userId ?: "",
             onDismiss = { viewModel.closeComments() },
-            onSendComment = { content -> viewModel.sendComment(content) },
+            onSendComment = { content, urgent -> viewModel.sendComment(content, urgent) },
             onDeleteComment = { comment -> viewModel.deleteComment(comment) }
         )
     }

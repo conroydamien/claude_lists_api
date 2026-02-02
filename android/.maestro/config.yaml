@@ -1,0 +1,26 @@
+# Maestro Configuration for Court Lists App E2E Tests
+# https://maestro.mobile.dev/
+
+# App identifier
+appId: com.claudelists.app
+
+# Default timeout for assertions (in milliseconds)
+# Increased to handle slower emulators/devices
+defaultTimeout: 10000
+
+# Tags for organizing test suites
+tags:
+  - smoke
+  - e2e
+  - android
+
+# Environment variables (can be overridden at runtime)
+env:
+  APP_PACKAGE: com.claudelists.app
+
+# Flows to run in order (optional - by default runs all flows)
+# flows:
+#   - flow1_list_navigation.yaml
+#   - flow2_watch_toggle.yaml
+#   - flow3_notification_navigation.yaml
+#   - flow4_comments.yaml

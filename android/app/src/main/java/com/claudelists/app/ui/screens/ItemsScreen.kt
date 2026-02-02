@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -488,24 +489,33 @@ fun CaseRow(
                 )
             }
 
-            // Comments button
+            // Comments button - show red raised hand if urgent
             Row(
                 modifier = Modifier
                     .clickable(onClick = onOpenComments)
                     .padding(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.Default.ChatBubbleOutline,
-                    contentDescription = "Comments",
-                    modifier = Modifier.size(20.dp),
-                    tint = if (item.commentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (item.hasUrgent) {
+                    Icon(
+                        Icons.Default.PanTool,
+                        contentDescription = "Needs help",
+                        modifier = Modifier.size(20.dp),
+                        tint = Color(0xFFD32F2F)
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.ChatBubbleOutline,
+                        contentDescription = "Comments",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (item.commentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 if (item.commentCount > 0) {
                     Text(
                         text = "${item.commentCount}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = if (item.hasUrgent) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 2.dp)
                     )
                 }

@@ -56,6 +56,7 @@ data class Comment(
     @SerialName("user_id") val userId: String? = null,
     @SerialName("author_name") val authorName: String,
     val content: String,
+    val urgent: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null
 )
 
@@ -103,7 +104,8 @@ data class CaseItem(
     val title: String,
     val parties: String?,
     var done: Boolean = false,
-    var commentCount: Int = 0
+    var commentCount: Int = 0,
+    var hasUrgent: Boolean = false
 ) {
     // Key for database lookups - use caseNumber if available, otherwise listNumber
     val caseKey: String

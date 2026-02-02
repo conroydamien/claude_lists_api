@@ -1,0 +1,59 @@
+# Flow 2: Watch Toggle
+# Tests toggling the watch/notification bell on the "List Notes" row
+# Prerequisites: App is launched and user is already signed in
+
+appId: com.claudelists.app
+
+---
+
+# Step 1: Verify we're on the home screen
+- assertVisible:
+    text: "Court Lists"
+    label: "Verify home screen is displayed"
+
+# Step 2: Wait for lists to load
+- extendedWaitUntil:
+    visible:
+      text: ".*lists"
+    timeout: 15000
+    label: "Wait for lists to load"
+
+# Step 3: Tap on the first list
+- tapOn:
+    text: ".*"
+    index: 0
+    label: "Tap on the first list"
+
+# Step 4: Verify Items screen loads
+- extendedWaitUntil:
+    visible:
+      text: "List Notes"
+    timeout: 10000
+    label: "Verify items screen loaded with List Notes row"
+
+# Step 5: Find and tap the bell icon on List Notes row
+# The bell icon has contentDescription "Get notified" or "Stop notifications"
+# depending on current watch state. We tap whichever is visible.
+- tapOn:
+    text: "Get notified|Stop notifications"
+    index: 0
+    label: "Tap bell icon to toggle watch state"
+
+# Step 6: Wait a moment for the state to update
+- waitForAnimationToEnd
+
+# Step 7: Verify the bell icon is still present (state may have changed)
+# After toggling, the opposite contentDescription should be visible
+- assertVisible:
+    text: "Get notified|Stop notifications"
+    label: "Verify bell icon is present after toggle"
+
+# Step 8: Go back to home screen
+- tapOn:
+    text: "Back"
+    label: "Tap back to return to home screen"
+
+# Step 9: Verify we're back on home screen
+- assertVisible:
+    text: "Court Lists"
+    label: "Verify returned to home screen"

@@ -245,15 +245,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun loadCommentCounts(sourceUrl: String, items: List<CaseItem>): List<CaseItem> {
         return try {
             val caseKeys = items.map { it.caseKey }
-            val commentCounts = api.getCommentCounts(sourceUrl, caseKeys)
-            Log.d(TAG, "Got ${commentCounts.size} comment count entries")
+            val comments = api.getCommentCounts(sourceUrl, caseKeys)
+            Log.d(TAG, "Got ${comments.size} comment count entries")
 
-            val countMap = commentCounts.groupingBy { it.caseNumber }.eachCount()
-            Log.d(TAG, "Comment count map: $countMap")
+            // Group by case number and count
+            val countMap = comments.groupingBy { it.caseNumber }.eachCount()
+            // Check which cases have urgent comments
+            val urgentMap = comments.filter { it.urgent }.map { it.caseNumber }.toSet()
+            Log.d(TAG, "Comment count map: $countMap, urgent cases: $urgentMap")
 
             items.map { item ->
                 val count = countMap[item.caseKey] ?: 0
-                item.copy(commentCount = count)
+                val hasUrgent = item.caseKey in urgentMap
+                item.copy(commentCount = count, hasUrgent = hasUrgent)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load comment counts", e)
@@ -375,20 +379,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun sendComment(content: String) {
+    fun sendComment(content: String, urgent: Boolean = false) {
         val userId = _uiState.value.userId ?: return
         val email = _uiState.value.userEmail ?: "User"
 
         // Check if this is a list comment or item comment
         if (_uiState.value.showListComments) {
-            sendListComment(content, userId, email)
+            sendListComment(content, userId, email, urgent)
         } else {
             val item = _uiState.value.selectedItem ?: return
-            sendItemComment(content, userId, email, item)
+            sendItemComment(content, userId, email, item, urgent)
         }
     }
 
-    private fun sendItemComment(content: String, userId: String, email: String, item: CaseItem) {
+    private fun sendItemComment(content: String, userId: String, email: String, item: CaseItem, urgent: Boolean) {
         viewModelScope.launch {
             try {
                 val comment = Comment(
@@ -396,7 +400,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     caseNumber = item.caseKey,
                     userId = userId,
                     authorName = email,
-                    content = content
+                    content = content,
+                    urgent = urgent
                 )
 
                 api.addComment(comment)
@@ -404,13 +409,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Reload comments
                 loadComments(item)
 
-                // Update comment count immutably
+                // Update comment count and urgent flag immutably
                 val updatedItems = _uiState.value.items.map {
-                    if (it.id == item.id) it.copy(commentCount = it.commentCount + 1) else it
+                    if (it.id == item.id) it.copy(
+                        commentCount = it.commentCount + 1,
+                        hasUrgent = it.hasUrgent || urgent
+                    ) else it
                 }
                 _uiState.value = _uiState.value.copy(
                     items = updatedItems,
-                    snackbarMessage = "Comment sent"
+                    snackbarMessage = if (urgent) "Urgent comment sent" else "Comment sent"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to send comment: ${e.message}", e)
@@ -419,7 +427,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun sendListComment(content: String, userId: String, email: String) {
+    private fun sendListComment(content: String, userId: String, email: String, urgent: Boolean) {
         val list = _uiState.value.selectedList ?: return
         viewModelScope.launch {
             try {
@@ -428,7 +436,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     caseNumber = getListCommentKey(list),
                     userId = userId,
                     authorName = email,
-                    content = content
+                    content = content,
+                    urgent = urgent
                 )
 
                 api.addComment(comment)
@@ -438,7 +447,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = _uiState.value.copy(
                     comments = comments,
                     listCommentCount = comments.size,
-                    snackbarMessage = "Comment sent"
+                    snackbarMessage = if (urgent) "Urgent comment sent" else "Comment sent"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to send list comment: ${e.message}", e)
@@ -467,8 +476,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     val item = _uiState.value.selectedItem ?: return@launch
                     loadComments(item)
+                    // Recalculate hasUrgent from remaining comments
+                    val remainingComments = _uiState.value.comments
+                    val stillHasUrgent = remainingComments.any { it.urgent }
                     val updatedItems = _uiState.value.items.map {
-                        if (it.id == item.id) it.copy(commentCount = maxOf(0, it.commentCount - 1)) else it
+                        if (it.id == item.id) it.copy(
+                            commentCount = maxOf(0, it.commentCount - 1),
+                            hasUrgent = stillHasUrgent
+                        ) else it
                     }
                     _uiState.value = _uiState.value.copy(items = updatedItems)
                 }

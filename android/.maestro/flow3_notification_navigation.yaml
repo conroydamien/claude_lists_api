@@ -1,0 +1,64 @@
+# Flow 3: Notification Navigation
+# Tests opening the notification sheet and navigating to a notification
+# Prerequisites: App is launched and user is already signed in
+
+appId: com.claudelists.app
+
+---
+
+# Step 1: Verify we're on the home screen
+- assertVisible:
+    text: "Court Lists"
+    label: "Verify home screen is displayed"
+
+# Step 2: Tap the notification bell in the top bar
+# The bell icon has contentDescription "Notifications"
+- tapOn:
+    text: "Notifications"
+    label: "Tap notification bell in top bar"
+
+# Step 3: Verify notifications sheet opens
+# The sheet has a "Notifications" title header
+- extendedWaitUntil:
+    visible:
+      text: "Notifications"
+    timeout: 5000
+    label: "Verify notifications sheet opened"
+
+# Step 4: Check if there are notifications or empty state
+# If empty, we'll see "No notifications" message
+- runFlow:
+    when:
+      visible:
+        text: "No notifications"
+    commands:
+      # No notifications exist - verify the empty state
+      - assertVisible:
+          text: "No notifications"
+          label: "Verify empty notifications message"
+    label: "Handle empty notifications state"
+
+# Step 5: If notifications exist, tap on one
+- runFlow:
+    when:
+      notVisible:
+        text: "No notifications"
+    commands:
+      # Tap on the first notification item
+      # Notifications show actor name and action like "commented" or "ago"
+      - tapOn:
+          text: ".*ago"
+          index: 0
+          label: "Tap on first notification"
+    label: "Handle notifications with items"
+
+# Step 6: Close the sheet by swiping down or pressing back
+- swipe:
+    direction: DOWN
+    duration: 500
+    label: "Swipe down to close any remaining sheet"
+
+# Step 7: Verify we're on a valid screen
+- assertVisible:
+    text: "Court Lists|List Notes|Updated:"
+    label: "Verify app is on a valid screen"
