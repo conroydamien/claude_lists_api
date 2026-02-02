@@ -76,7 +76,8 @@ data class CourtList(
     val dateText: String,
     val venue: String,
     val type: String?,
-    val sourceUrl: String
+    val sourceUrl: String,
+    val updated: String? = null
 ) {
     companion object {
         fun fromDiaryEntry(entry: DiaryEntry, index: Int): CourtList {
@@ -87,7 +88,8 @@ data class CourtList(
                 dateText = entry.dateText,
                 venue = entry.venue,
                 type = entry.type.takeIf { it.isNotBlank() },
-                sourceUrl = entry.sourceUrl
+                sourceUrl = entry.sourceUrl,
+                updated = entry.updated.takeIf { it.isNotBlank() }
             )
         }
     }

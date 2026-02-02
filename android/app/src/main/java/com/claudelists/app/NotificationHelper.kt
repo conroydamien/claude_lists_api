@@ -33,15 +33,17 @@ object NotificationHelper {
         message: String,
         listSourceUrl: String? = null,
         caseNumber: String? = null,
+        notificationType: String? = null,
         notificationId: Int = System.currentTimeMillis().toInt()
     ) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
             listSourceUrl?.let { putExtra("list_source_url", it) }
             caseNumber?.let { putExtra("case_number", it) }
+            notificationType?.let { putExtra("notification_type", it) }
         }
         val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent,
+            context, notificationId, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 

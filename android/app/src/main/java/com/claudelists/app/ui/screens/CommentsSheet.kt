@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.claudelists.app.api.CaseItem
 import com.claudelists.app.api.Comment
 import java.text.SimpleDateFormat
 import java.util.*
@@ -21,7 +20,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsSheet(
-    item: CaseItem,
+    title: String,
     comments: List<Comment>,
     currentUserId: String,
     onDismiss: () -> Unit,
@@ -55,9 +54,9 @@ fun CommentsSheet(
                 }
             }
 
-            // Item title
+            // Title
             Text(
-                text = item.title,
+                text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 16.dp)

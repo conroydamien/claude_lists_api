@@ -32,6 +32,7 @@ private const val TAG = "AuthManager"
 private const val PREFS_NAME = "court_lists_auth"
 private const val KEY_ACCESS_TOKEN = "access_token"
 private const val KEY_REFRESH_TOKEN = "refresh_token"
+private const val KEY_EXPIRES_AT = "expires_at"
 private const val KEY_USER_ID = "user_id"
 private const val KEY_USER_EMAIL = "user_email"
 private const val KEY_USER_APPROVED = "user_approved"
@@ -112,6 +113,36 @@ class AuthManager(private val context: Context) {
     fun getAccessToken(): String? = prefs.getString(KEY_ACCESS_TOKEN, null)
 
     fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
+
+    /**
+     * Check if the current access token is expired or about to expire.
+     * Returns true if token expires in less than 60 seconds.
+     */
+    fun isTokenExpired(): Boolean {
+        val expiresAt = prefs.getLong(KEY_EXPIRES_AT, 0)
+        if (expiresAt == 0L) return true
+        // Consider expired if less than 60 seconds remaining
+        return System.currentTimeMillis() > (expiresAt - 60_000)
+    }
+
+    /**
+     * Get a valid access token, refreshing if necessary.
+     * This is a suspending function that may perform network calls.
+     */
+    suspend fun getValidAccessToken(): String? {
+        val currentToken = prefs.getString(KEY_ACCESS_TOKEN, null) ?: return null
+
+        if (isTokenExpired()) {
+            Log.d(TAG, "Token expired, refreshing...")
+            val refreshed = refreshToken()
+            if (!refreshed) {
+                Log.e(TAG, "Token refresh failed")
+                return null
+            }
+        }
+
+        return prefs.getString(KEY_ACCESS_TOKEN, null)
+    }
 
     /**
      * Get the sign-in intent to launch.
@@ -216,6 +247,7 @@ class AuthManager(private val context: Context) {
         prefs.edit()
             .remove(KEY_ACCESS_TOKEN)
             .remove(KEY_REFRESH_TOKEN)
+            .remove(KEY_EXPIRES_AT)
             .remove(KEY_USER_ID)
             .remove(KEY_USER_EMAIL)
             .remove(KEY_USER_APPROVED)
@@ -230,9 +262,13 @@ class AuthManager(private val context: Context) {
         val approved = response.user?.appMetadata?.get("approved")
             ?.jsonPrimitive?.boolean ?: false
 
+        // Calculate expiration time (expiresIn is in seconds)
+        val expiresAt = System.currentTimeMillis() + ((response.expiresIn ?: 3600) * 1000L)
+
         prefs.edit()
             .putString(KEY_ACCESS_TOKEN, response.accessToken)
             .putString(KEY_REFRESH_TOKEN, response.refreshToken)
+            .putLong(KEY_EXPIRES_AT, expiresAt)
             .putString(KEY_USER_ID, userId)
             .putString(KEY_USER_EMAIL, email)
             .putBoolean(KEY_USER_APPROVED, approved)
@@ -245,7 +281,7 @@ class AuthManager(private val context: Context) {
             userEmail = email
         )
 
-        Log.i(TAG, "Tokens saved. User: $email, approved: $approved")
+        Log.i(TAG, "Tokens saved. User: $email, approved: $approved, expires at: $expiresAt")
     }
 
     fun clearError() {

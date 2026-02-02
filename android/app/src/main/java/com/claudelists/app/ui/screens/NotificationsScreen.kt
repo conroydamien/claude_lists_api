@@ -5,10 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,56 +25,78 @@ import java.time.temporal.ChronoUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen(
+fun NotificationsSheet(
     notifications: List<AppNotification>,
-    onBack: () -> Unit,
+    onDismiss: () -> Unit,
     onNotificationClick: (AppNotification) -> Unit,
-    onMarkAllRead: () -> Unit
+    onMarkAllRead: () -> Unit,
+    onDeleteNotification: (AppNotification) -> Unit = {},
+    onClearAll: () -> Unit = {}
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Notifications") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Notifications",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Row {
                     if (notifications.any { !it.read }) {
                         IconButton(onClick = onMarkAllRead) {
                             Icon(Icons.Default.DoneAll, contentDescription = "Mark all as read")
                         }
                     }
+                    if (notifications.isNotEmpty()) {
+                        IconButton(onClick = onClearAll) {
+                            Icon(Icons.Default.DeleteSweep, contentDescription = "Clear all")
+                        }
+                    }
                 }
-            )
-        }
-    ) { padding ->
-        if (notifications.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No notifications",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(vertical = 8.dp)
-            ) {
-                items(notifications, key = { it.id }) { notification ->
-                    NotificationItem(
-                        notification = notification,
-                        onClick = { onNotificationClick(notification) }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Divider()
+
+            if (notifications.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No notifications",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(notifications, key = { it.id }) { notification ->
+                        NotificationItem(
+                            notification = notification,
+                            onClick = { onNotificationClick(notification) }
+                        )
+                    }
                 }
             }
         }
@@ -82,7 +104,7 @@ fun NotificationsScreen(
 }
 
 @Composable
-fun NotificationItem(
+private fun NotificationItem(
     notification: AppNotification,
     onClick: () -> Unit
 ) {
@@ -100,7 +122,7 @@ fun NotificationItem(
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
@@ -122,9 +144,7 @@ fun NotificationItem(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconTint,
-                modifier = Modifier
-                    .size(24.dp)
-                    .padding(end = 4.dp)
+                modifier = Modifier.size(20.dp)
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -144,12 +164,17 @@ fun NotificationItem(
                     fontWeight = if (notification.read) FontWeight.Normal else FontWeight.SemiBold
                 )
 
-                // Case identifier
+                // Case title and number
+                val caseText = if (notification.caseTitle != null) {
+                    "${notification.caseTitle} (${notification.caseNumber})"
+                } else {
+                    notification.caseNumber
+                }
                 Text(
-                    text = "Case: ${notification.caseNumber}",
+                    text = caseText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
 
@@ -176,21 +201,14 @@ fun NotificationItem(
 
             // Unread indicator
             if (!notification.read) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .padding(start = 8.dp)
-                ) {
-                    Surface(
-                        modifier = Modifier.size(8.dp),
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.primary
-                    ) {}
-                }
+                Surface(
+                    modifier = Modifier.size(8.dp),
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.primary
+                ) {}
             }
         }
     }
-    Divider()
 }
 
 private fun formatTimestamp(isoTimestamp: String): String {

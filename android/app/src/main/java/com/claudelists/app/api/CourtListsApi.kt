@@ -4,14 +4,9 @@ import android.util.Log
 import com.claudelists.app.BuildConfig
 import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
 
 private const val TAG = "CourtListsApi"
 
@@ -21,35 +16,16 @@ private const val TAG = "CourtListsApi"
  * Implements the API defined in supabase/api.yaml
  * Types defined in supabase/functions/_shared/types.ts
  */
-class CourtListsApi(private val authManager: AuthManager) {
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        encodeDefaults = true
-        explicitNulls = false
-    }
-
-    private val client = HttpClient(OkHttp) {
-        install(ContentNegotiation) {
-            json(json)
-        }
-        install(Logging) {
-            logger = object : Logger {
-                override fun log(message: String) {
-                    Log.d(TAG, message)
-                }
-            }
-            level = LogLevel.HEADERS
-        }
-    }
-
+class CourtListsApi(
+    private val client: HttpClient,
+    private val authManager: AuthManager
+) {
     private val baseUrl = BuildConfig.API_BASE_URL
     private val anonKey = BuildConfig.API_ANON_KEY
 
     private suspend fun HttpRequestBuilder.addAuth() {
         header("apikey", anonKey)
-        authManager.getAccessToken()?.let { token ->
+        authManager.getValidAccessToken()?.let { token ->
             header("Authorization", "Bearer $token")
         }
     }
@@ -227,7 +203,20 @@ class CourtListsApi(private val authManager: AuthManager) {
         }
     }
 
-    fun close() {
-        client.close()
+    /** Delete a notification (only deletes if owned by the user) */
+    suspend fun deleteNotification(userId: String, id: Long) {
+        client.delete("$baseUrl/rest/v1/notifications") {
+            addAuth()
+            parameter("id", "eq.$id")
+            parameter("user_id", "eq.$userId")
+        }
+    }
+
+    /** Delete all notifications for a user */
+    suspend fun deleteAllNotifications(userId: String) {
+        client.delete("$baseUrl/rest/v1/notifications") {
+            addAuth()
+            parameter("user_id", "eq.$userId")
+        }
     }
 }

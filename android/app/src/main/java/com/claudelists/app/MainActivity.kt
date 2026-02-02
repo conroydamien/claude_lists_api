@@ -21,15 +21,19 @@ import com.claudelists.app.ui.screens.ApprovalPendingScreen
 import com.claudelists.app.ui.screens.CommentsSheet
 import com.claudelists.app.ui.screens.ItemsScreen
 import com.claudelists.app.ui.screens.ListsScreen
-import com.claudelists.app.ui.screens.NotificationsScreen
+import com.claudelists.app.ui.screens.NotificationsSheet
 import com.claudelists.app.ui.screens.SignInScreen
 import com.claudelists.app.ui.theme.CourtListsTheme
+import com.claudelists.app.viewmodel.getListCommentKey
 import com.claudelists.app.viewmodel.MainViewModel
 import java.time.LocalDate
 
 private const val TAG = "MainActivity"
 
 class MainActivity : ComponentActivity() {
+
+    // Observable state for pending navigation from notification clicks
+    private val _pendingNavigation = mutableStateOf<PendingNavigation?>(null)
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -66,6 +70,8 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     CourtListsApp(
+                        pendingNavigation = _pendingNavigation.value,
+                        onNavigationHandled = { _pendingNavigation.value = null },
                         onSignInWithGoogle = {
                             val intent = CourtListsApplication.instance.authManager.getSignInIntent()
                             googleSignInLauncher.launch(intent)
@@ -82,19 +88,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        // Handle notification click - store for ViewModel to pick up
+        // Handle notification click - set observable state
         intent?.getStringExtra("list_source_url")?.let { listUrl ->
             val caseNumber = intent.getStringExtra("case_number")
-            Log.d(TAG, "Notification click: list=$listUrl, case=$caseNumber")
-            pendingNavigation = PendingNavigation(listUrl, caseNumber)
+            val notificationType = intent.getStringExtra("notification_type")
+            Log.d(TAG, "Notification click: list=$listUrl, case=$caseNumber, type=$notificationType")
+            _pendingNavigation.value = PendingNavigation(listUrl, caseNumber, notificationType)
         }
     }
 
-    data class PendingNavigation(val listSourceUrl: String, val caseNumber: String?)
-
-    companion object {
-        var pendingNavigation: PendingNavigation? = null
-    }
+    data class PendingNavigation(val listSourceUrl: String, val caseNumber: String?, val notificationType: String? = null)
 
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -116,6 +119,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun CourtListsApp(
     viewModel: MainViewModel = viewModel(),
+    pendingNavigation: MainActivity.PendingNavigation? = null,
+    onNavigationHandled: () -> Unit = {},
     onSignInWithGoogle: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -155,13 +160,15 @@ fun CourtListsApp(
         }
     }
 
-    // Handle notification click navigation
-    LaunchedEffect(uiState.isApproved) {
-        if (uiState.isApproved) {
-            MainActivity.pendingNavigation?.let { nav ->
-                MainActivity.pendingNavigation = null
-                viewModel.navigateFromNotification(nav.listSourceUrl, nav.caseNumber)
-            }
+    // Handle notification click navigation - triggered when pendingNavigation changes
+    LaunchedEffect(pendingNavigation) {
+        if (uiState.isApproved && pendingNavigation != null) {
+            viewModel.navigateFromNotification(
+                pendingNavigation.listSourceUrl,
+                pendingNavigation.caseNumber,
+                pendingNavigation.notificationType
+            )
+            onNavigationHandled()
         }
     }
 
@@ -176,32 +183,24 @@ fun CourtListsApp(
     androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
     // Navigation based on state
     when {
-        uiState.showNotifications -> {
-            NotificationsScreen(
-                notifications = uiState.notifications,
-                onBack = { viewModel.hideNotifications() },
-                onNotificationClick = { notification ->
-                    viewModel.markNotificationRead(notification)
-                    viewModel.navigateToCase(
-                        notification.listSourceUrl,
-                        notification.caseNumber,
-                        notification.type
-                    )
-                    viewModel.hideNotifications()
-                },
-                onMarkAllRead = { viewModel.markAllNotificationsRead() }
-            )
-        }
         uiState.selectedList != null -> {
             ItemsScreen(
                 uiState = uiState,
                 onBack = { viewModel.clearSelectedList() },
                 onToggleDone = { item -> viewModel.toggleDone(item) },
                 onOpenComments = { item -> viewModel.openComments(item) },
+                onOpenListComments = { caseKey -> viewModel.openListComments(caseKey) },
                 onToggleWatch = { item -> viewModel.toggleWatch(item) },
                 isWatching = { item -> viewModel.isWatching(item.listSourceUrl, item.caseKey) },
+                onToggleWatchList = { viewModel.toggleWatchList() },
+                isWatchingList = uiState.selectedList?.let { list ->
+                    "${list.sourceUrl}|${getListCommentKey(list)}" in uiState.watchedCaseKeys
+                } ?: false,
                 onRefresh = { viewModel.refreshItems() },
-                onClearPendingAction = { viewModel.clearPendingAction() }
+                onClearPendingAction = { viewModel.clearPendingAction() },
+                onNotificationsClick = { viewModel.showNotifications() },
+                unreadNotificationCount = uiState.unreadNotificationCount,
+                listCommentCount = uiState.listCommentCount
             )
         }
         else -> {
@@ -217,15 +216,54 @@ fun CourtListsApp(
         }
     }
 
-    // Comments bottom sheet
+    // Case comments bottom sheet
     uiState.selectedItem?.let { item ->
         CommentsSheet(
-            item = item,
+            title = item.caseNumber ?: item.title,
             comments = uiState.comments,
             currentUserId = uiState.userId ?: "",
             onDismiss = { viewModel.closeComments() },
             onSendComment = { content -> viewModel.sendComment(content) },
             onDeleteComment = { comment -> viewModel.deleteComment(comment) }
+        )
+    }
+
+    // List comments bottom sheet
+    if (uiState.showListComments) {
+        // Use override title from notification, or generate from list
+        val listTitle = uiState.listCommentsTitle ?: run {
+            val list = uiState.selectedList
+            if (list != null) {
+                "${list.venue} - ${list.dateText}".trim().trimStart('-').trimEnd('-').trim()
+            } else ""
+        }
+        CommentsSheet(
+            title = listTitle,
+            comments = uiState.comments,
+            currentUserId = uiState.userId ?: "",
+            onDismiss = { viewModel.closeComments() },
+            onSendComment = { content -> viewModel.sendComment(content) },
+            onDeleteComment = { comment -> viewModel.deleteComment(comment) }
+        )
+    }
+
+    // Notifications bottom sheet
+    if (uiState.showNotifications) {
+        NotificationsSheet(
+            notifications = uiState.notifications,
+            onDismiss = { viewModel.hideNotifications() },
+            onNotificationClick = { notification ->
+                viewModel.markNotificationRead(notification)
+                viewModel.navigateToCase(
+                    notification.listSourceUrl,
+                    notification.caseNumber,
+                    notification.type
+                )
+                viewModel.hideNotifications()
+            },
+            onMarkAllRead = { viewModel.markAllNotificationsRead() },
+            onDeleteNotification = { notification -> viewModel.deleteNotification(notification) },
+            onClearAll = { viewModel.clearAllNotifications() }
         )
     }
 

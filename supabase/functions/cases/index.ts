@@ -53,7 +53,7 @@ function parseCaseItem(line: string): ParsedCase {
     return {
       listNumber,
       caseNumber: null,
-      title: line,
+      title: remainder,  // Use remainder (without list number prefix)
       parties: remainder || null,
       isCase: true
     }
@@ -72,7 +72,7 @@ function parseCaseItem(line: string): ParsedCase {
   return {
     listNumber,
     caseNumber,
-    title: line,
+    title: afterCaseNum || remainder,  // Use text after case number, fallback to remainder
     parties,
     isCase: true
   }

@@ -6,12 +6,18 @@ import com.claudelists.app.api.AuthManager
 import com.claudelists.app.api.CourtListsApi
 import com.claudelists.app.api.NotificationChange
 import com.claudelists.app.api.RealtimeClient
+import io.ktor.client.*
+import io.ktor.client.engine.okhttp.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 
 private const val TAG = "CourtListsApp"
 
@@ -19,6 +25,9 @@ class CourtListsApplication : Application() {
 
     // Application-scoped coroutine scope that survives activity recreation
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    // Shared HTTP client for all API calls
+    private lateinit var httpClient: HttpClient
 
     // API clients
     lateinit var authManager: AuthManager
@@ -47,10 +56,23 @@ class CourtListsApplication : Application() {
         super.onCreate()
         instance = this
 
-        // Initialize API clients
+        // Shared HTTP client with JSON and WebSocket support
+        httpClient = HttpClient(OkHttp) {
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                    encodeDefaults = true
+                    explicitNulls = false
+                })
+            }
+            install(WebSockets)
+        }
+
+        // Initialize API clients with shared HTTP client
         authManager = AuthManager(this)
-        api = CourtListsApi(authManager)
-        realtimeClient = RealtimeClient(authManager)
+        api = CourtListsApi(httpClient, authManager)
+        realtimeClient = RealtimeClient(httpClient, authManager)
 
         Log.i(TAG, "Application created")
     }
@@ -126,7 +148,8 @@ class CourtListsApplication : Application() {
                 title = title,
                 message = message,
                 listSourceUrl = change.listSourceUrl,
-                caseNumber = change.caseNumber
+                caseNumber = change.caseNumber,
+                notificationType = change.type
             )
 
             // Emit event for ViewModel to update UI
@@ -144,8 +167,7 @@ class CourtListsApplication : Application() {
 
     override fun onTerminate() {
         super.onTerminate()
-        realtimeClient.close()
-        api.close()
+        httpClient.close()
         authManager.close()
     }
 

@@ -3,12 +3,10 @@ package com.claudelists.app.api
 import android.util.Log
 import com.claudelists.app.BuildConfig
 import io.ktor.client.*
-import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 
 private const val TAG = "RealtimeClient"
@@ -24,13 +22,11 @@ private const val TAG = "RealtimeClient"
  *
  * Event types defined in supabase/functions/_shared/types.ts
  */
-class RealtimeClient(private val authManager: AuthManager) {
-
+class RealtimeClient(
+    private val client: HttpClient,
+    private val authManager: AuthManager
+) {
     private val json = Json { ignoreUnknownKeys = true }
-
-    private val client = HttpClient(OkHttp) {
-        install(WebSockets)
-    }
 
     private val baseUrl = BuildConfig.API_BASE_URL
         .replace("https://", "wss://")
@@ -73,7 +69,7 @@ class RealtimeClient(private val authManager: AuthManager) {
 
         _connectionState.value = ConnectionState.CONNECTING
 
-        val accessToken = authManager.getAccessToken()
+        val accessToken = authManager.getValidAccessToken()
         if (accessToken == null) {
             Log.e(TAG, "No access token, cannot connect")
             _connectionState.value = ConnectionState.ERROR
@@ -257,10 +253,6 @@ class RealtimeClient(private val authManager: AuthManager) {
         Log.i(TAG, "Disconnected")
     }
 
-    fun close() {
-        disconnect()
-        client.close()
-    }
 }
 
 /**

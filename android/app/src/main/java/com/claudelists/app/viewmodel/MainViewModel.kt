@@ -18,6 +18,12 @@ private const val TAG = "MainViewModel"
 sealed class PendingAction {
     data class OpenComments(val caseKey: String) : PendingAction()
     data class ScrollToCase(val caseKey: String) : PendingAction()
+    data class OpenListComments(val caseKey: String) : PendingAction()
+}
+
+// Generate key for list-level comments from list title
+fun getListCommentKey(list: CourtList): String {
+    return "${list.venue} - ${list.dateText}".trim().ifEmpty { list.name }
 }
 
 data class UiState(
@@ -34,8 +40,12 @@ data class UiState(
     val selectedList: CourtList? = null,
     val items: List<CaseItem> = emptyList(),
     val headers: List<String> = emptyList(),
+    val lastStatusUpdateMillis: Long? = null, // Most recent done/undone timestamp (epoch millis)
     val comments: List<Comment> = emptyList(),
     val selectedItem: CaseItem? = null,
+    val showListComments: Boolean = false,
+    val listCommentsTitle: String? = null, // Override title when opened from notification
+    val listCommentCount: Int = 0,
     val error: String? = null,
     val snackbarMessage: String? = null,
     val pendingAction: PendingAction? = null,
@@ -52,6 +62,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val authManager = app.authManager
 
     private val _uiState = MutableStateFlow(UiState())
+
+    // Flag to prevent realtime reload from overwriting optimistic updates during toggle
+    private var suppressWatchReload = false
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     init {
@@ -160,7 +173,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 isLoading = true,
                 selectedList = list,
                 items = emptyList(),
-                headers = emptyList()
+                headers = emptyList(),
+                lastStatusUpdateMillis = null
             )
 
             try {
@@ -173,13 +187,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
 
                 // Load done status and comment counts (returns updated items)
-                items = loadCaseStatuses(list.sourceUrl, items)
-                items = loadCommentCounts(list.sourceUrl, items)
+                val (updatedItems, lastUpdate) = loadCaseStatuses(list.sourceUrl, items)
+                items = loadCommentCounts(list.sourceUrl, updatedItems)
+
+                // Load list-level comment count
+                val listCommentCount = loadListCommentCount(list)
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     items = items,
                     headers = casesResponse.headers,
+                    lastStatusUpdateMillis = lastUpdate,
+                    listCommentCount = listCommentCount,
                     error = null
                 )
             } catch (e: Exception) {
@@ -192,19 +211,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private suspend fun loadCaseStatuses(sourceUrl: String, items: List<CaseItem>): List<CaseItem> {
+    private suspend fun loadCaseStatuses(sourceUrl: String, items: List<CaseItem>): Pair<List<CaseItem>, Long?> {
         return try {
             val caseKeys = items.map { it.caseKey }
             val statuses = api.getCaseStatuses(sourceUrl, caseKeys)
 
+            // Find most recent update time as epoch millis
+            val lastUpdateMillis = statuses
+                .mapNotNull { it.updatedAt }
+                .mapNotNull { parseToMillis(it) }
+                .maxOrNull()
+
             val statusMap = statuses.associateBy { it.caseNumber }
-            items.map { item ->
+            val updatedItems = items.map { item ->
                 val status = statusMap[item.caseKey]
                 if (status != null) item.copy(done = status.done) else item
             }
+            Pair(updatedItems, lastUpdateMillis)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load case statuses", e)
-            items
+            Pair(items, null)
+        }
+    }
+
+    private fun parseToMillis(isoTimestamp: String): Long? {
+        return try {
+            java.time.Instant.parse(isoTimestamp).toEpochMilli()
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -227,11 +261,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private suspend fun loadListCommentCount(list: CourtList): Int {
+        return try {
+            val comments = api.getComments(list.sourceUrl, getListCommentKey(list))
+            comments.size
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load list comment count", e)
+            0
+        }
+    }
+
     fun clearSelectedList() {
         _uiState.value = _uiState.value.copy(
             selectedList = null,
             items = emptyList(),
-            headers = emptyList()
+            headers = emptyList(),
+            lastStatusUpdateMillis = null
         )
     }
 
@@ -248,14 +293,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val newDone = !item.done
 
-            // Optimistic update
+            // Optimistic update - include lastStatusUpdateMillis
             val updatedItems = _uiState.value.items.map {
                 if (it.id == item.id) it.copy(done = newDone) else it
             }
-            _uiState.value = _uiState.value.copy(items = updatedItems)
+            _uiState.value = _uiState.value.copy(
+                items = updatedItems,
+                lastStatusUpdateMillis = System.currentTimeMillis()
+            )
 
             try {
                 val userId = authManager.getUserId()
+                // Don't send updatedAt - server trigger sets it to now()
                 val status = CaseStatus(
                     listSourceUrl = item.listSourceUrl,
                     caseNumber = item.caseKey,
@@ -291,7 +340,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun closeComments() {
-        _uiState.value = _uiState.value.copy(selectedItem = null, comments = emptyList())
+        _uiState.value = _uiState.value.copy(
+            selectedItem = null,
+            showListComments = false,
+            listCommentsTitle = null,
+            comments = emptyList()
+        )
+    }
+
+    fun openListComments(overrideCaseKey: String? = null) {
+        val list = _uiState.value.selectedList ?: return
+        viewModelScope.launch {
+            // Use override key if provided (from notification), otherwise generate from list
+            val caseKey = overrideCaseKey ?: getListCommentKey(list)
+            // Use override key as title if provided (has human-readable date format)
+            val title = overrideCaseKey
+            _uiState.value = _uiState.value.copy(showListComments = true, listCommentsTitle = title)
+            try {
+                Log.d(TAG, "Loading list comments with key: $caseKey")
+                val comments = api.getComments(list.sourceUrl, caseKey)
+                _uiState.value = _uiState.value.copy(comments = comments)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load list comments", e)
+            }
+        }
     }
 
     private suspend fun loadComments(item: CaseItem) {
@@ -304,10 +376,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun sendComment(content: String) {
-        val item = _uiState.value.selectedItem ?: return
         val userId = _uiState.value.userId ?: return
         val email = _uiState.value.userEmail ?: "User"
 
+        // Check if this is a list comment or item comment
+        if (_uiState.value.showListComments) {
+            sendListComment(content, userId, email)
+        } else {
+            val item = _uiState.value.selectedItem ?: return
+            sendItemComment(content, userId, email, item)
+        }
+    }
+
+    private fun sendItemComment(content: String, userId: String, email: String, item: CaseItem) {
         viewModelScope.launch {
             try {
                 val comment = Comment(
@@ -338,25 +419,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun sendListComment(content: String, userId: String, email: String) {
+        val list = _uiState.value.selectedList ?: return
+        viewModelScope.launch {
+            try {
+                val comment = Comment(
+                    listSourceUrl = list.sourceUrl,
+                    caseNumber = getListCommentKey(list),
+                    userId = userId,
+                    authorName = email,
+                    content = content
+                )
+
+                api.addComment(comment)
+
+                // Reload list comments
+                val comments = api.getComments(list.sourceUrl, getListCommentKey(list))
+                _uiState.value = _uiState.value.copy(
+                    comments = comments,
+                    listCommentCount = comments.size,
+                    snackbarMessage = "Comment sent"
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send list comment: ${e.message}", e)
+                _uiState.value = _uiState.value.copy(error = "Failed to send: ${e.message}")
+            }
+        }
+    }
+
     fun clearSnackbar() {
         _uiState.value = _uiState.value.copy(snackbarMessage = null)
     }
 
     fun deleteComment(comment: Comment) {
-        val item = _uiState.value.selectedItem ?: return
-
         viewModelScope.launch {
             try {
                 comment.id?.let { api.deleteComment(it) }
 
-                // Reload comments
-                loadComments(item)
-
-                // Update comment count immutably
-                val updatedItems = _uiState.value.items.map {
-                    if (it.id == item.id) it.copy(commentCount = maxOf(0, it.commentCount - 1)) else it
+                // Check if this is a list comment or item comment
+                if (_uiState.value.showListComments) {
+                    val list = _uiState.value.selectedList ?: return@launch
+                    val comments = api.getComments(list.sourceUrl, getListCommentKey(list))
+                    _uiState.value = _uiState.value.copy(
+                        comments = comments,
+                        listCommentCount = comments.size
+                    )
+                } else {
+                    val item = _uiState.value.selectedItem ?: return@launch
+                    loadComments(item)
+                    val updatedItems = _uiState.value.items.map {
+                        if (it.id == item.id) it.copy(commentCount = maxOf(0, it.commentCount - 1)) else it
+                    }
+                    _uiState.value = _uiState.value.copy(items = updatedItems)
                 }
-                _uiState.value = _uiState.value.copy(items = updatedItems)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to delete comment", e)
             }
@@ -447,6 +562,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                     val statusMap = statuses.associateBy { it.caseNumber }
 
+                    // Find most recent update time from server
+                    val latestUpdateMillis = statuses
+                        .mapNotNull { it.updatedAt }
+                        .mapNotNull { parseToMillis(it) }
+                        .maxOrNull()
+
                     val updatedItems = _uiState.value.items.map { item ->
                         val newDone = statusMap[item.caseKey]?.done ?: item.done
                         if (newDone != item.done) {
@@ -456,7 +577,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
 
-                    _uiState.value = _uiState.value.copy(items = updatedItems)
+                    _uiState.value = _uiState.value.copy(
+                        items = updatedItems,
+                        lastStatusUpdateMillis = latestUpdateMillis ?: _uiState.value.lastStatusUpdateMillis
+                    )
                     Log.d(TAG, "Status reloaded via realtime, ${statuses.size} statuses")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to reload statuses", e)
@@ -475,6 +599,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadWatchedCases() {
         viewModelScope.launch {
+            // Skip reload if we're in the middle of a toggle operation
+            if (suppressWatchReload) {
+                Log.d(TAG, "Skipping watch reload due to pending toggle")
+                return@launch
+            }
             try {
                 val userId = authManager.getUserId() ?: return@launch
                 val watched = api.getWatchedCases(userId)
@@ -497,6 +626,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val userId = authManager.getUserId() ?: return@launch
             val key = "${item.listSourceUrl}|${item.caseKey}"
             val isCurrentlyWatching = key in _uiState.value.watchedCaseKeys
+
+            // Suppress realtime reloads during toggle
+            suppressWatchReload = true
 
             // Optimistic update
             val newKeys = if (isCurrentlyWatching) {
@@ -527,6 +659,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     watchedCaseKeys = _uiState.value.watchedCaseKeys,
                     error = "Failed to update watch: ${e.message}"
                 )
+            } finally {
+                // Re-enable reloads after a short delay to let realtime events pass
+                kotlinx.coroutines.delay(500)
+                suppressWatchReload = false
+            }
+        }
+    }
+
+    fun isWatchingList(): Boolean {
+        val list = _uiState.value.selectedList ?: return false
+        return "${list.sourceUrl}|${getListCommentKey(list)}" in _uiState.value.watchedCaseKeys
+    }
+
+    fun toggleWatchList() {
+        viewModelScope.launch {
+            val userId = authManager.getUserId() ?: return@launch
+            val list = _uiState.value.selectedList ?: return@launch
+            val listCommentKey = getListCommentKey(list)
+            val key = "${list.sourceUrl}|${listCommentKey}"
+            val isCurrentlyWatching = key in _uiState.value.watchedCaseKeys
+
+            // Suppress realtime reloads during toggle
+            suppressWatchReload = true
+
+            // Optimistic update
+            val newKeys = if (isCurrentlyWatching) {
+                _uiState.value.watchedCaseKeys - key
+            } else {
+                _uiState.value.watchedCaseKeys + key
+            }
+            _uiState.value = _uiState.value.copy(watchedCaseKeys = newKeys)
+
+            try {
+                if (isCurrentlyWatching) {
+                    api.unwatchCase(userId, list.sourceUrl, listCommentKey)
+                    Log.d(TAG, "Unwatched list comments: ${list.sourceUrl}")
+                } else {
+                    val watchedCase = WatchedCase(
+                        userId = userId,
+                        listSourceUrl = list.sourceUrl,
+                        caseNumber = listCommentKey,
+                        source = "manual"
+                    )
+                    api.watchCase(watchedCase)
+                    Log.d(TAG, "Watching list comments: ${list.sourceUrl}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to toggle list watch", e)
+                // Revert on failure
+                _uiState.value = _uiState.value.copy(
+                    watchedCaseKeys = _uiState.value.watchedCaseKeys,
+                    error = "Failed to update watch: ${e.message}"
+                )
+            } finally {
+                // Re-enable reloads after a short delay to let realtime events pass
+                kotlinx.coroutines.delay(500)
+                suppressWatchReload = false
             }
         }
     }
@@ -593,6 +782,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun deleteNotification(notification: AppNotification) {
+        viewModelScope.launch {
+            val userId = authManager.getUserId() ?: return@launch
+
+            // Optimistic update
+            val updated = _uiState.value.notifications.filter { it.id != notification.id }
+            val unreadCount = updated.count { !it.read }
+            _uiState.value = _uiState.value.copy(
+                notifications = updated,
+                unreadNotificationCount = unreadCount
+            )
+
+            try {
+                api.deleteNotification(userId, notification.id)
+                Log.d(TAG, "Deleted notification: ${notification.id}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete notification", e)
+                // Revert on failure
+                loadNotifications()
+            }
+        }
+    }
+
+    fun clearAllNotifications() {
+        viewModelScope.launch {
+            // Optimistic update
+            _uiState.value = _uiState.value.copy(
+                notifications = emptyList(),
+                unreadNotificationCount = 0
+            )
+
+            try {
+                val userId = authManager.getUserId() ?: return@launch
+                api.deleteAllNotifications(userId)
+                Log.d(TAG, "Cleared all notifications")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to clear all notifications", e)
+                // Revert on failure
+                loadNotifications()
+            }
+        }
+    }
+
     fun showNotifications() {
         _uiState.value = _uiState.value.copy(showNotifications = true)
     }
@@ -603,21 +835,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Navigate to a specific case from notification
     fun navigateToCase(listSourceUrl: String, caseNumber: String, notificationType: String? = null) {
+        Log.d(TAG, "navigateToCase: url=$listSourceUrl, caseNumber=$caseNumber, type=$notificationType")
         viewModelScope.launch {
-            // Set pending action based on notification type
-            val pendingAction = when (notificationType) {
-                "comment" -> PendingAction.OpenComments(caseNumber)
-                "status_done", "status_undone" -> PendingAction.ScrollToCase(caseNumber)
-                else -> PendingAction.ScrollToCase(caseNumber)
-            }
-            _uiState.value = _uiState.value.copy(pendingAction = pendingAction)
-
             val list = _uiState.value.lists.find { it.sourceUrl == listSourceUrl }
+            Log.d(TAG, "navigateToCase: found existing list=${list != null}")
+
             if (list != null) {
+                // Check if this is a list comment
+                val listCommentKey = getListCommentKey(list)
+                val isListComment = caseNumber == listCommentKey
+                Log.d(TAG, "navigateToCase: isListComment=$isListComment, caseNumber='$caseNumber', listCommentKey='$listCommentKey'")
+
+                // Set pending action based on notification type
+                val pendingAction = when {
+                    isListComment && notificationType == "comment" -> PendingAction.OpenListComments(caseNumber)
+                    notificationType == "comment" -> PendingAction.OpenComments(caseNumber)
+                    notificationType == "status_done" || notificationType == "status_undone" -> PendingAction.ScrollToCase(caseNumber)
+                    else -> PendingAction.ScrollToCase(caseNumber)
+                }
+                Log.d(TAG, "navigateToCase: pendingAction=$pendingAction")
+                _uiState.value = _uiState.value.copy(pendingAction = pendingAction)
                 selectList(list)
             } else {
-                // Create list from URL and navigate
-                navigateFromNotification(listSourceUrl, caseNumber)
+                // List not loaded - delegate to navigateFromNotification which will create temp list
+                Log.d(TAG, "navigateToCase: list not found, delegating to navigateFromNotification")
+                navigateFromNotification(listSourceUrl, caseNumber, notificationType)
             }
         }
     }
@@ -643,6 +885,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // ScrollToCase is handled by ItemsScreen via scrollToCaseIndex
                 // Don't clear here - let ItemsScreen clear it after scrolling
             }
+            is PendingAction.OpenListComments -> {
+                openListComments(action.caseKey)
+                clearPendingAction()
+            }
         }
     }
 
@@ -657,13 +903,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Navigate from a system notification click
-    fun navigateFromNotification(listSourceUrl: String, caseNumber: String?) {
-        Log.d(TAG, "Navigating from notification: url=$listSourceUrl, case=$caseNumber")
+    fun navigateFromNotification(listSourceUrl: String, caseNumber: String?, notificationType: String? = null) {
+        Log.d(TAG, "Navigating from notification: url=$listSourceUrl, case=$caseNumber, type=$notificationType")
         viewModelScope.launch {
             // First check if we already have this list loaded
             val existingList = _uiState.value.lists.find { it.sourceUrl == listSourceUrl }
+
             if (existingList != null) {
                 Log.d(TAG, "Found existing list: ${existingList.name}")
+                // Check if this is a list comment
+                val isListComment = caseNumber == getListCommentKey(existingList)
+                Log.d(TAG, "Is list comment (existing): $isListComment, caseNumber=$caseNumber, listCommentKey=${getListCommentKey(existingList)}")
+
+                // Set pending action based on notification type
+                if (caseNumber != null) {
+                    val pendingAction = when {
+                        isListComment && notificationType == "comment" -> PendingAction.OpenListComments(caseNumber)
+                        notificationType == "comment" -> PendingAction.OpenComments(caseNumber)
+                        else -> PendingAction.ScrollToCase(caseNumber)
+                    }
+                    _uiState.value = _uiState.value.copy(pendingAction = pendingAction)
+                }
                 selectList(existingList)
                 return@launch
             }
@@ -690,6 +950,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 type = null,
                 sourceUrl = listSourceUrl
             )
+
+            // Check if this is a list comment using the created list
+            val isListComment = caseNumber == getListCommentKey(list)
+            Log.d(TAG, "Is list comment (created): $isListComment, caseNumber=$caseNumber, listCommentKey=${getListCommentKey(list)}")
+
+            // Set pending action based on notification type
+            if (caseNumber != null) {
+                val pendingAction = when {
+                    isListComment && notificationType == "comment" -> PendingAction.OpenListComments(caseNumber)
+                    notificationType == "comment" -> PendingAction.OpenComments(caseNumber)
+                    else -> PendingAction.ScrollToCase(caseNumber)
+                }
+                _uiState.value = _uiState.value.copy(pendingAction = pendingAction)
+            }
 
             selectList(list)
         }
