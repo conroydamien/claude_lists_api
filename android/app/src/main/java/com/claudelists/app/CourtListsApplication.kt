@@ -70,7 +70,7 @@ class CourtListsApplication : Application() {
         }
 
         // Initialize API clients with shared HTTP client
-        authManager = AuthManager(this)
+        authManager = AuthManager(this, httpClient)
         api = CourtListsApi(httpClient, authManager)
         realtimeClient = RealtimeClient(httpClient, authManager)
 
@@ -168,7 +168,6 @@ class CourtListsApplication : Application() {
     override fun onTerminate() {
         super.onTerminate()
         httpClient.close()
-        authManager.close()
     }
 
     companion object {

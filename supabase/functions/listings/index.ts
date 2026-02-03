@@ -1,10 +1,12 @@
 // Edge function to fetch and parse courts.ie listings
 // POST /functions/v1/listings { "date": "YYYY-MM-DD" }
+// Requires JWT authentication to prevent abuse
 //
 // Types defined in: supabase/shared/types.ts
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import type { DiaryEntry, ListingsRequest } from "../_shared/types.ts"
+import { validateGoogleToken, extractBearerToken, corsHeaders, errorResponse, handleCors } from "../_shared/auth.ts"
 
 const COURTS_IE_BASE = "https://legaldiary.courts.ie"
 
@@ -66,18 +68,23 @@ function parseListingsPage(html: string): DiaryEntry[] {
 }
 
 serve(async (req) => {
-  // Handle CORS
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-      }
-    })
+    return handleCors();
   }
 
   try {
+    // Validate JWT - required for all requests to prevent abuse
+    const token = extractBearerToken(req.headers.get('Authorization'));
+    if (!token) {
+      return errorResponse('Authorization required', 401);
+    }
+
+    const user = await validateGoogleToken(token);
+    if (!user) {
+      return errorResponse('Invalid token', 401);
+    }
+
     let date: string | null = null
 
     // Support both GET (query params) and POST (JSON body)
@@ -90,10 +97,7 @@ serve(async (req) => {
     }
 
     if (!date) {
-      return new Response(
-        JSON.stringify({ error: 'date parameter required (YYYY-MM-DD)' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('date parameter required (YYYY-MM-DD)', 400);
     }
 
     // Build courts.ie URL
@@ -119,19 +123,14 @@ serve(async (req) => {
       {
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders,
           'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
         }
       }
     )
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    )
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return errorResponse(message, 500);
   }
 })

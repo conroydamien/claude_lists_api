@@ -1,10 +1,12 @@
 // Edge function to fetch and parse courts.ie case detail page
 // POST /functions/v1/cases { "url": "<source_url>" }
+// Requires JWT authentication to prevent abuse
 //
 // Types defined in: supabase/shared/types.ts
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import type { ParsedCase, CasesResponse, CasesRequest } from "../_shared/types.ts"
+import { validateGoogleToken, extractBearerToken, corsHeaders, errorResponse, handleCors } from "../_shared/auth.ts"
 
 // Multiple case number patterns for different courts
 const caseNumberPatterns = [
@@ -128,18 +130,23 @@ function parseDetailPage(html: string): CasesResponse {
 }
 
 serve(async (req) => {
-  // Handle CORS
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-      }
-    })
+    return handleCors();
   }
 
   try {
+    // Validate JWT - required for all requests to prevent abuse
+    const token = extractBearerToken(req.headers.get('Authorization'));
+    if (!token) {
+      return errorResponse('Authorization required', 401);
+    }
+
+    const user = await validateGoogleToken(token);
+    if (!user) {
+      return errorResponse('Invalid token', 401);
+    }
+
     let sourceUrl: string | null = null
 
     // Support both GET (query params) and POST (JSON body)
@@ -152,18 +159,12 @@ serve(async (req) => {
     }
 
     if (!sourceUrl) {
-      return new Response(
-        JSON.stringify({ error: 'url parameter required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('url parameter required', 400);
     }
 
     // Validate URL is from courts.ie
     if (!sourceUrl.startsWith('https://legaldiary.courts.ie')) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid URL - must be from legaldiary.courts.ie' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Invalid URL - must be from legaldiary.courts.ie', 400);
     }
 
     // Fetch from courts.ie
@@ -185,19 +186,14 @@ serve(async (req) => {
       {
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders,
           'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
         }
       }
     )
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    )
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return errorResponse(message, 500);
   }
 })

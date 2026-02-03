@@ -17,7 +17,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import com.claudelists.app.ui.screens.ApprovalPendingScreen
 import com.claudelists.app.ui.screens.CommentsSheet
 import com.claudelists.app.ui.screens.ItemsScreen
 import com.claudelists.app.ui.screens.ListsScreen
@@ -144,25 +143,16 @@ fun CourtListsApp(
         return
     }
 
-    // Show approval pending screen if authenticated but not approved
-    if (!uiState.isApproved) {
-        ApprovalPendingScreen(
-            userEmail = uiState.userEmail ?: "",
-            onSignOut = { viewModel.signOut() }
-        )
-        return
-    }
-
-    // Load initial data when authenticated and approved
-    LaunchedEffect(uiState.isApproved) {
-        if (uiState.isApproved && uiState.lists.isEmpty() && !uiState.isLoading) {
+    // Load initial data when authenticated
+    LaunchedEffect(uiState.isAuthenticated) {
+        if (uiState.isAuthenticated && uiState.lists.isEmpty() && !uiState.isLoading) {
             viewModel.loadListsForDate(LocalDate.now().toString())
         }
     }
 
     // Handle notification click navigation - triggered when pendingNavigation changes
     LaunchedEffect(pendingNavigation) {
-        if (uiState.isApproved && pendingNavigation != null) {
+        if (uiState.isAuthenticated && pendingNavigation != null) {
             viewModel.navigateFromNotification(
                 pendingNavigation.listSourceUrl,
                 pendingNavigation.caseNumber,

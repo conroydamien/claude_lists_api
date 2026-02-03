@@ -29,7 +29,6 @@ fun getListCommentKey(list: CourtList): String {
 data class UiState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
-    val isApproved: Boolean = false,
     val userId: String? = null,
     val userEmail: String? = null,
     val lists: List<CourtList> = emptyList(),
@@ -84,15 +83,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun observeAuthState() {
         viewModelScope.launch {
             authManager.authState.collect { authState ->
-                Log.i(TAG, "Auth state changed: authenticated=${authState.isAuthenticated}, approved=${authState.isApproved}")
+                Log.i(TAG, "Auth state changed: authenticated=${authState.isAuthenticated}")
                 _uiState.value = _uiState.value.copy(
                     isAuthenticated = authState.isAuthenticated,
-                    isApproved = authState.isApproved,
                     userId = authState.userId,
                     userEmail = authState.userEmail
                 )
 
-                if (authState.isAuthenticated && authState.isApproved) {
+                if (authState.isAuthenticated) {
                     loadWatchedCases()
                     loadNotifications()
                     setupRealtimeSubscription()
@@ -307,16 +305,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             try {
-                val userId = authManager.getUserId()
-                // Don't send updatedAt - server trigger sets it to now()
-                val status = CaseStatus(
-                    listSourceUrl = item.listSourceUrl,
-                    caseNumber = item.caseKey,
-                    done = newDone,
-                    updatedBy = userId
-                )
-
-                api.upsertCaseStatus(status)
+                api.upsertCaseStatus(item.listSourceUrl, item.caseKey, newDone)
                 Log.d(TAG, "Upsert successful")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to toggle done: ${e.message}", e)
@@ -395,16 +384,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun sendItemComment(content: String, userId: String, email: String, item: CaseItem, urgent: Boolean) {
         viewModelScope.launch {
             try {
-                val comment = Comment(
-                    listSourceUrl = item.listSourceUrl,
-                    caseNumber = item.caseKey,
-                    userId = userId,
-                    authorName = email,
-                    content = content,
-                    urgent = urgent
-                )
-
-                api.addComment(comment)
+                api.addComment(item.listSourceUrl, item.caseKey, content, urgent)
 
                 // Reload comments
                 loadComments(item)
@@ -431,16 +411,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val list = _uiState.value.selectedList ?: return
         viewModelScope.launch {
             try {
-                val comment = Comment(
-                    listSourceUrl = list.sourceUrl,
-                    caseNumber = getListCommentKey(list),
-                    userId = userId,
-                    authorName = email,
-                    content = content,
-                    urgent = urgent
-                )
-
-                api.addComment(comment)
+                api.addComment(list.sourceUrl, getListCommentKey(list), content, urgent)
 
                 // Reload list comments
                 val comments = api.getComments(list.sourceUrl, getListCommentKey(list))
@@ -620,8 +591,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
             try {
-                val userId = authManager.getUserId() ?: return@launch
-                val watched = api.getWatchedCases(userId)
+                val watched = api.getWatchedCases()
 
                 val keys = watched.map { "${it.listSourceUrl}|${it.caseNumber}" }.toSet()
                 _uiState.value = _uiState.value.copy(watchedCaseKeys = keys)
@@ -638,7 +608,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleWatch(item: CaseItem) {
         viewModelScope.launch {
-            val userId = authManager.getUserId() ?: return@launch
             val key = "${item.listSourceUrl}|${item.caseKey}"
             val isCurrentlyWatching = key in _uiState.value.watchedCaseKeys
 
@@ -655,16 +624,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             try {
                 if (isCurrentlyWatching) {
-                    api.unwatchCase(userId, item.listSourceUrl, item.caseKey)
+                    api.unwatchCase(item.listSourceUrl, item.caseKey)
                     Log.d(TAG, "Unwatched case: ${item.caseKey}")
                 } else {
-                    val watchedCase = WatchedCase(
-                        userId = userId,
-                        listSourceUrl = item.listSourceUrl,
-                        caseNumber = item.caseKey,
-                        source = "manual"
-                    )
-                    api.watchCase(watchedCase)
+                    api.watchCase(item.listSourceUrl, item.caseKey)
                     Log.d(TAG, "Watching case: ${item.caseKey}")
                 }
             } catch (e: Exception) {
@@ -689,7 +652,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleWatchList() {
         viewModelScope.launch {
-            val userId = authManager.getUserId() ?: return@launch
             val list = _uiState.value.selectedList ?: return@launch
             val listCommentKey = getListCommentKey(list)
             val key = "${list.sourceUrl}|${listCommentKey}"
@@ -708,16 +670,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             try {
                 if (isCurrentlyWatching) {
-                    api.unwatchCase(userId, list.sourceUrl, listCommentKey)
+                    api.unwatchCase(list.sourceUrl, listCommentKey)
                     Log.d(TAG, "Unwatched list comments: ${list.sourceUrl}")
                 } else {
-                    val watchedCase = WatchedCase(
-                        userId = userId,
-                        listSourceUrl = list.sourceUrl,
-                        caseNumber = listCommentKey,
-                        source = "manual"
-                    )
-                    api.watchCase(watchedCase)
+                    api.watchCase(list.sourceUrl, listCommentKey)
                     Log.d(TAG, "Watching list comments: ${list.sourceUrl}")
                 }
             } catch (e: Exception) {
@@ -742,8 +698,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun loadNotifications() {
         viewModelScope.launch {
             try {
-                val userId = authManager.getUserId() ?: return@launch
-                val notifications = api.getNotifications(userId)
+                val notifications = api.getNotifications()
 
                 val unreadCount = notifications.count { !it.read }
                 _uiState.value = _uiState.value.copy(
@@ -782,8 +737,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun markAllNotificationsRead() {
         viewModelScope.launch {
             try {
-                val userId = authManager.getUserId() ?: return@launch
-                api.markAllNotificationsRead(userId)
+                api.markAllNotificationsRead()
 
                 // Update local state
                 val updated = _uiState.value.notifications.map { it.copy(read = true) }
@@ -799,8 +753,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteNotification(notification: AppNotification) {
         viewModelScope.launch {
-            val userId = authManager.getUserId() ?: return@launch
-
             // Optimistic update
             val updated = _uiState.value.notifications.filter { it.id != notification.id }
             val unreadCount = updated.count { !it.read }
@@ -810,7 +762,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             try {
-                api.deleteNotification(userId, notification.id)
+                api.deleteNotification(notification.id)
                 Log.d(TAG, "Deleted notification: ${notification.id}")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to delete notification", e)
@@ -829,8 +781,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             try {
-                val userId = authManager.getUserId() ?: return@launch
-                api.deleteAllNotifications(userId)
+                api.deleteAllNotifications()
                 Log.d(TAG, "Cleared all notifications")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to clear all notifications", e)
