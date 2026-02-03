@@ -39,7 +39,7 @@ data class UiState(
     val selectedList: CourtList? = null,
     val items: List<CaseItem> = emptyList(),
     val headers: List<String> = emptyList(),
-    val lastStatusUpdateMillis: Long? = null, // Most recent done/undone timestamp (epoch millis)
+    val lastUpdateByList: Map<String, Long> = emptyMap(), // Per-list update timestamps (sourceUrl -> epoch millis)
     val comments: List<Comment> = emptyList(),
     val selectedItem: CaseItem? = null,
     val showListComments: Boolean = false,
@@ -171,8 +171,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 isLoading = true,
                 selectedList = list,
                 items = emptyList(),
-                headers = emptyList(),
-                lastStatusUpdateMillis = null
+                headers = emptyList()
             )
 
             try {
@@ -191,11 +190,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Load list-level comment count
                 val listCommentCount = loadListCommentCount(list)
 
+                // Update timestamp for this specific list
+                val updatedTimestamps = if (lastUpdate != null) {
+                    _uiState.value.lastUpdateByList + (list.sourceUrl to lastUpdate)
+                } else {
+                    _uiState.value.lastUpdateByList
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     items = items,
                     headers = casesResponse.headers,
-                    lastStatusUpdateMillis = lastUpdate,
+                    lastUpdateByList = updatedTimestamps,
                     listCommentCount = listCommentCount,
                     error = null
                 )
@@ -277,8 +283,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = _uiState.value.copy(
             selectedList = null,
             items = emptyList(),
-            headers = emptyList(),
-            lastStatusUpdateMillis = null
+            headers = emptyList()
         )
     }
 
@@ -295,13 +300,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val newDone = !item.done
 
-            // Optimistic update - include lastStatusUpdateMillis
+            // Optimistic update - include per-list timestamp
             val updatedItems = _uiState.value.items.map {
                 if (it.id == item.id) it.copy(done = newDone) else it
             }
+            val updatedTimestamps = _uiState.value.lastUpdateByList + (item.listSourceUrl to System.currentTimeMillis())
             _uiState.value = _uiState.value.copy(
                 items = updatedItems,
-                lastStatusUpdateMillis = System.currentTimeMillis()
+                lastUpdateByList = updatedTimestamps
             )
 
             try {
@@ -563,9 +569,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
 
+                    // Update per-list timestamp
+                    val updatedTimestamps = if (latestUpdateMillis != null) {
+                        _uiState.value.lastUpdateByList + (selectedList.sourceUrl to latestUpdateMillis)
+                    } else {
+                        _uiState.value.lastUpdateByList
+                    }
+
                     _uiState.value = _uiState.value.copy(
                         items = updatedItems,
-                        lastStatusUpdateMillis = latestUpdateMillis ?: _uiState.value.lastStatusUpdateMillis
+                        lastUpdateByList = updatedTimestamps
                     )
                     Log.d(TAG, "Status reloaded via realtime, ${statuses.size} statuses")
                 } catch (e: Exception) {

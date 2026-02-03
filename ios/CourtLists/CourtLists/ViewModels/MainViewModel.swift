@@ -37,8 +37,14 @@ class MainViewModel: ObservableObject {
 
     @Published var errorMessage: String?
 
-    /// Timestamp of the last status update (for "Updated: Xs ago" display)
-    @Published var lastStatusUpdateDate: Date?
+    /// Timestamp of the last update per list (keyed by sourceUrl)
+    @Published var lastUpdateByList: [String: Date] = [:]
+
+    /// Get the last update date for the currently selected list
+    var lastStatusUpdateDate: Date? {
+        guard let list = selectedList else { return nil }
+        return lastUpdateByList[list.sourceUrl]
+    }
 
     var unreadNotificationCount: Int {
         notifications.filter { !$0.read }.count
@@ -455,8 +461,8 @@ extension MainViewModel: RealtimeClientDelegate {
 
     nonisolated func realtimeClient(_ client: RealtimeClient, didReceiveCommentUpdate comment: Comment, eventType: String) {
         Task { @MainActor in
-            // Update timestamp for "Updated: Xs ago" display
-            lastStatusUpdateDate = Date()
+            // Update timestamp for this specific list
+            lastUpdateByList[comment.listSourceUrl] = Date()
 
             // Refresh comments if we're viewing the same case
             if let item = selectedItem,
@@ -474,8 +480,8 @@ extension MainViewModel: RealtimeClientDelegate {
 
     nonisolated func realtimeClient(_ client: RealtimeClient, didReceiveStatusUpdate status: CaseStatus, eventType: String) {
         Task { @MainActor in
-            // Update timestamp for "Updated: Xs ago" display
-            lastStatusUpdateDate = Date()
+            // Update timestamp for this specific list
+            lastUpdateByList[status.listSourceUrl] = Date()
 
             if let list = selectedList, status.listSourceUrl == list.sourceUrl {
                 if let index = items.firstIndex(where: { $0.caseKey == status.caseNumber }) {

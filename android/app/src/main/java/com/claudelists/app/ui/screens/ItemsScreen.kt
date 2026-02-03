@@ -112,9 +112,9 @@ fun ItemsScreen(
         }
     }
 
-    // Compute elapsed time from server timestamp
+    // Compute elapsed time from server timestamp for this specific list
     val lastUpdateText = run {
-        val serverTimestamp = uiState.lastStatusUpdateMillis
+        val serverTimestamp = uiState.lastUpdateByList[list.sourceUrl]
         if (serverTimestamp != null) {
             // Use tick to force recomputation every second
             @Suppress("UNUSED_EXPRESSION")
