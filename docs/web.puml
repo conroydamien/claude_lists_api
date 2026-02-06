@@ -1,0 +1,60 @@
+@startuml web
+title Web App (Planned - Not Yet Built)
+
+package "UI" {
+  [Sign-In Page]
+  [Listings Page]
+  [Cases Page]
+  [Comments Panel]
+  [Notifications Dropdown]
+}
+
+package "State" {
+  [Auth Store]
+  [Lists Store]
+  [Cases Store]
+  [Comments Store]
+  [Notifications Store]
+}
+
+package "Services" {
+  [API Client]
+  [WebSocket Client]
+  [Auth Client]
+}
+
+[Sign-In Page] --> [Auth Store]
+[Listings Page] --> [Lists Store]
+[Cases Page] --> [Cases Store]
+[Cases Page] --> [Comments Store]
+[Cases Page] --> [Notifications Store]
+
+[Lists Store] --> [API Client]
+[Cases Store] --> [API Client]
+[Comments Store] --> [API Client]
+[Notifications Store] --> [API Client]
+[Notifications Store] --> [WebSocket Client]
+[Auth Store] --> [Auth Client]
+
+[API Client] --> [Auth Client] : get token
+
+note right of [API Client]
+  Same endpoints as mobile:
+  /listings, /cases,
+  /case-status, /comments,
+  /watched-cases, /notifications
+  Auth: Google ID token
+  Web Client ID: 807765424446-ofr...
+end note
+
+note right of [WebSocket Client]
+  Supabase JS or raw WebSocket
+  postgres_changes subscriptions
+end note
+
+note bottom of [Auth Client]
+  Google Identity Services
+  (web platform)
+end note
+
+@enduml

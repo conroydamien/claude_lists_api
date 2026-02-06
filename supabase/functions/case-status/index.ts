@@ -88,6 +88,35 @@ serve(async (req) => {
         );
 
         if (error) throw error;
+
+        // Create notifications for watchers in background (don't block response)
+        (async () => {
+          try {
+            const { data: watchers } = await db
+              .from('watched_cases')
+              .select('user_id')
+              .eq('list_source_url', body.list_source_url)
+              .eq('case_number', body.case_number)
+              .neq('user_id', user.id);
+
+            if (watchers && watchers.length > 0) {
+              const notificationType = body.done ? 'status_done' : 'status_undone';
+              const notifications = watchers.map((w: { user_id: string }) => ({
+                user_id: w.user_id,
+                type: notificationType,
+                list_source_url: body.list_source_url,
+                case_number: body.case_number,
+                actor_id: user.id,
+                actor_name: user.name || user.email || 'Someone',
+              }));
+
+              await db.from('notifications').insert(notifications);
+            }
+          } catch (e) {
+            console.error('Failed to create notifications:', e);
+          }
+        })();
+
         return jsonResponse({ message: 'Status updated' });
       }
 

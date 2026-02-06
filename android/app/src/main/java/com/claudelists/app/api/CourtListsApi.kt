@@ -34,11 +34,11 @@ class CourtListsApi(
     // =========================================================================
 
     /** Get court listings for a date (POST /functions/v1/listings) */
-    suspend fun getListings(date: String): List<DiaryEntry> {
+    suspend fun getListings(date: String, court: String = "circuit-court"): List<DiaryEntry> {
         val response = client.post("$baseUrl/functions/v1/listings") {
             addAuth()
             contentType(ContentType.Application.Json)
-            setBody(ListingsRequest(date))
+            setBody(ListingsRequest(date, court))
         }
         return response.body()
     }

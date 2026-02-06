@@ -1,0 +1,74 @@
+@startuml fetch-list
+title Android - Fetch and Display a Court List
+
+actor User
+participant "ListsScreen" as Lists
+participant "ItemsScreen" as Items
+participant "MainViewModel" as VM
+participant "CourtListsApi" as API
+participant "AuthManager" as Auth
+participant "/listings" as ListingsFn
+participant "/cases" as CasesFn
+participant "/case-status" as StatusFn
+participant "/comments" as CommentsFn
+participant "courts.ie" as Courts
+database "PostgreSQL" as DB
+
+== 1. Load Listings ==
+User -> Lists: Select date + court type
+Lists -> VM: loadListsForDate(date, COURT_OF_APPEAL)
+VM -> API: getListings("2026-02-06", "court-of-appeal")
+API -> Auth: getGoogleIdToken()
+Auth --> API: Google ID token
+API -> ListingsFn: POST /functions/v1/listings\nBearer {token}\n{date, court}
+ListingsFn -> Courts: GET /legaldiary.nsf/court-of-appeal\n?OpenView&dateFrom=06-02-2026...
+Courts --> ListingsFn: HTML (3-column table)
+ListingsFn -> ListingsFn: parseListingsPage(html)\nExtract clickable-row entries
+ListingsFn --> API: DiaryEntry[]
+API --> VM: List<DiaryEntry>
+VM -> VM: Map to CourtList[]\nExtract venues\nApply venue filter
+VM --> Lists: UiState update via StateFlow
+Lists --> User: Show list of court listings
+
+== 2. Select a Listing ==
+User -> Lists: Tap a listing
+Lists -> VM: selectList(list)
+VM --> Items: UiState.selectedList set\nNavigate to ItemsScreen
+
+== 3. Load Cases ==
+VM -> API: getCases(list.sourceUrl)
+API -> CasesFn: POST /functions/v1/cases\nBearer {token}\n{url: sourceUrl}
+CasesFn -> Courts: GET {sourceUrl}
+Courts --> CasesFn: HTML detail page
+CasesFn -> CasesFn: parseDetailPage(html)\ndetectListType() -> court-of-appeal\nSkip preamble\nparseCaseItem() per line
+CasesFn --> API: {cases[], headers[]}
+API --> VM: CasesResponse
+
+== 4. Load Statuses + Comments (parallel) ==
+VM -> API: getCaseStatuses(sourceUrl, caseKeys)
+API -> StatusFn: GET /case-status\n?list_source_url&case_numbers
+StatusFn -> DB: SELECT case_status
+DB --> StatusFn: rows
+StatusFn --> API: CaseStatus[]
+API --> VM: done/undone per case
+
+VM -> API: getCommentCounts(sourceUrl, caseKeys)
+API -> CommentsFn: GET /comments\n?list_source_url&case_numbers
+CommentsFn -> DB: SELECT comments
+DB --> CommentsFn: rows
+CommentsFn --> API: CommentCount[]
+API --> VM: count + urgent per case
+
+== 5. Load List Comment Count ==
+VM -> API: getComments(sourceUrl, listCommentKey)
+API -> CommentsFn: GET /comments\n?list_source_url&case_number=__LIST__
+CommentsFn -> DB: SELECT comments
+CommentsFn --> API: Comment[]
+API --> VM: comments.size
+
+== 6. Display ==
+VM -> VM: Merge cases + statuses + counts\nbuildDisplayItems()
+VM --> Items: UiState update via StateFlow
+Items --> User: Show header (collapsible)\nList Notes row\nCase rows with done/comments/watch
+
+@enduml

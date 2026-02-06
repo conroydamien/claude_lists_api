@@ -16,8 +16,29 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.json.*
+import java.security.MessageDigest
 
 private const val TAG = "AuthManager"
+
+/**
+ * Convert Google ID to a deterministic UUID (matches backend auth.ts logic).
+ * Uses SHA-256 hash formatted as UUID v4 format.
+ */
+private fun googleIdToUuid(googleId: String): String {
+    val data = "google:$googleId".toByteArray(Charsets.UTF_8)
+    val digest = MessageDigest.getInstance("SHA-256")
+    val hashBytes = digest.digest(data)
+
+    // Take first 16 bytes and format as UUID
+    val hex = hashBytes.take(16).joinToString("") { "%02x".format(it) }
+
+    // Format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+    // Set version (4) and variant bits
+    val byte6 = (hashBytes[6].toInt() and 0x0f) or 0x40 // version 4
+    val byte8 = (hashBytes[8].toInt() and 0x3f) or 0x80 // variant
+
+    return "${hex.substring(0, 8)}-${hex.substring(8, 12)}-4${hex.substring(13, 16)}-${"%02x".format(byte8)}${hex.substring(18, 20)}-${hex.substring(20, 32)}"
+}
 
 /**
  * Manages authentication using native Google Sign-In.
@@ -66,10 +87,10 @@ class AuthManager(
 
     private fun loadAuthState(): AuthState {
         val account = GoogleSignIn.getLastSignedInAccount(context)
-        return if (account != null && account.idToken != null) {
+        return if (account != null && account.idToken != null && account.id != null) {
             AuthState(
                 isAuthenticated = true,
-                userId = account.id,
+                userId = googleIdToUuid(account.id!!),
                 userEmail = account.email,
                 userName = account.displayName
             )
@@ -86,11 +107,11 @@ class AuthManager(
         return try {
             // Try silent sign-in to refresh the token
             val account = googleSignInClient.silentSignIn().await()
-            account.idToken
+            account.idToken?.also { Log.d(TAG, "DEBUG_TOKEN: $it") }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get ID token", e)
             // Fall back to last signed in account
-            GoogleSignIn.getLastSignedInAccount(context)?.idToken
+            GoogleSignIn.getLastSignedInAccount(context)?.idToken?.also { Log.d(TAG, "DEBUG_TOKEN: $it") }
         }
     }
 
@@ -161,10 +182,10 @@ class AuthManager(
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             val account = task.getResult(ApiException::class.java)
 
-            if (account.idToken != null) {
+            if (account.idToken != null && account.id != null) {
                 _authState.value = AuthState(
                     isAuthenticated = true,
-                    userId = account.id,
+                    userId = googleIdToUuid(account.id!!),
                     userEmail = account.email,
                     userName = account.displayName
                 )

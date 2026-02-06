@@ -26,6 +26,13 @@ fun getListCommentKey(list: CourtList): String {
     return "${list.venue} - ${list.dateText}".trim().ifEmpty { list.name }
 }
 
+// Available court types
+enum class CourtType(val id: String, val displayName: String) {
+    CIRCUIT("circuit-court", "Circuit Court"),
+    HIGH("high-court", "High Court"),
+    COURT_OF_APPEAL("court-of-appeal", "Court of Appeal")
+}
+
 data class UiState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
@@ -34,6 +41,7 @@ data class UiState(
     val lists: List<CourtList> = emptyList(),
     val filteredLists: List<CourtList> = emptyList(),
     val venues: List<String> = emptyList(),
+    val selectedCourt: CourtType = CourtType.CIRCUIT,
     val selectedDate: String? = null,
     val selectedVenue: String? = null,
     val selectedList: CourtList? = null,
@@ -112,13 +120,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Data Loading
     // =========================================================================
 
-    fun loadListsForDate(date: String) {
-        Log.d(TAG, "loadListsForDate called with date: $date")
+    fun loadListsForDate(date: String, court: CourtType? = null) {
+        val courtToUse = court ?: _uiState.value.selectedCourt
+        Log.d(TAG, "loadListsForDate called with date: $date, court: ${courtToUse.id}")
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, selectedDate = date)
+            _uiState.value = _uiState.value.copy(isLoading = true, selectedDate = date, selectedCourt = courtToUse)
 
             try {
-                val entries = api.getListings(date)
+                val entries = api.getListings(date, courtToUse.id)
                 Log.d(TAG, "Loaded ${entries.size} entries")
 
                 val lists = entries.mapIndexed { index, entry ->
@@ -149,6 +158,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setDateFilter(date: String?) {
         if (date != null && date != _uiState.value.selectedDate) {
             loadListsForDate(date)
+        }
+    }
+
+    fun setCourtFilter(court: CourtType) {
+        if (court != _uiState.value.selectedCourt) {
+            val date = _uiState.value.selectedDate ?: return
+            loadListsForDate(date, court)
         }
     }
 

@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import com.claudelists.app.api.Comment
 import com.claudelists.app.ui.screens.CommentsSheet
 import com.claudelists.app.ui.screens.ItemsScreen
 import com.claudelists.app.ui.screens.ListsScreen
@@ -124,6 +126,23 @@ fun CourtListsApp(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val context = LocalContext.current
+
+    // Share a comment via Android share sheet
+    fun shareComment(comment: Comment, title: String) {
+        val shareText = buildString {
+            append("Re: $title\n\n")
+            append("\"${comment.content}\"\n\n")
+            append("— ${comment.authorName}")
+        }
+        val sendIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            type = "text/plain"
+        }
+        val shareIntent = Intent.createChooser(sendIntent, "Share comment")
+        context.startActivity(shareIntent)
+    }
 
     // Show snackbar messages
     LaunchedEffect(uiState.snackbarMessage) {
@@ -198,6 +217,7 @@ fun CourtListsApp(
                 uiState = uiState,
                 onDateChange = { viewModel.setDateFilter(it) },
                 onVenueChange = { viewModel.setVenueFilter(it) },
+                onCourtChange = { viewModel.setCourtFilter(it) },
                 onListSelect = { viewModel.selectList(it) },
                 onSignOut = { viewModel.signOut() },
                 onNotificationsClick = { viewModel.showNotifications() },
@@ -208,13 +228,23 @@ fun CourtListsApp(
 
     // Case comments bottom sheet
     uiState.selectedItem?.let { item ->
+        val commentTitle = item.caseNumber ?: item.title
+        val shareTitle = buildString {
+            uiState.selectedList?.venue?.let { append("$it - ") }
+            item.listNumber?.let { append("#$it - ") }
+            append(item.caseNumber ?: item.title)
+            if (item.caseNumber != null && item.title.isNotBlank()) {
+                append(" - ${item.title}")
+            }
+        }
         CommentsSheet(
-            title = item.caseNumber ?: item.title,
+            title = commentTitle,
             comments = uiState.comments,
             currentUserId = uiState.userId ?: "",
             onDismiss = { viewModel.closeComments() },
             onSendComment = { content, urgent -> viewModel.sendComment(content, urgent) },
-            onDeleteComment = { comment -> viewModel.deleteComment(comment) }
+            onDeleteComment = { comment -> viewModel.deleteComment(comment) },
+            onShareComment = { comment -> shareComment(comment, shareTitle) }
         )
     }
 
@@ -233,7 +263,8 @@ fun CourtListsApp(
             currentUserId = uiState.userId ?: "",
             onDismiss = { viewModel.closeComments() },
             onSendComment = { content, urgent -> viewModel.sendComment(content, urgent) },
-            onDeleteComment = { comment -> viewModel.deleteComment(comment) }
+            onDeleteComment = { comment -> viewModel.deleteComment(comment) },
+            onShareComment = { comment -> shareComment(comment, listTitle) }
         )
     }
 

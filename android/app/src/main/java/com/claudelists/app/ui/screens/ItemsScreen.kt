@@ -289,7 +289,7 @@ private fun buildDisplayItems(
 
     // Add headers at the top if any
     if (headers.isNotEmpty()) {
-        result.add(DisplayItem.HeaderItem(headers.joinToString(" · ")))
+        result.add(DisplayItem.HeaderItem(headers.joinToString("\n")))
     }
 
     // Add list notes row
@@ -443,10 +443,10 @@ fun CaseRow(
                 Spacer(modifier = Modifier.width(32.dp))
             }
 
-            // List number
-            item.listNumber?.let { num ->
+            // List number with optional suffix (e.g., "4a")
+            item.listPosition?.let { pos ->
                 Text(
-                    text = "$num",
+                    text = pos,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.width(32.dp)

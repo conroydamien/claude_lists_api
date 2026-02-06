@@ -1,0 +1,67 @@
+@startuml auth-flow
+title Authentication Flow - Two JWT Types
+
+actor User
+participant "App\n(Android/iOS/Web)" as App
+participant "Google\nSign-In" as Google
+participant "Supabase\n/auth/v1/token" as SupaAuth
+participant "Edge Function\n(auth.ts)" as EdgeFn
+participant "Google\ntokeninfo API" as TokenInfo
+database "PostgreSQL" as DB
+participant "Supabase\nRealtime WS" as RT
+
+== 1. Sign In ==
+User -> App: Tap "Sign in with Google"
+App -> Google: Google Sign-In SDK
+User <-> Google: Authenticate
+Google --> App: GoogleUser {idToken, id, email, name}
+App -> App: Store Google ID token (JWT #1)\nDerive userId = SHA-256("google:{id}")
+
+== 2. API Calls (Google ID Token) ==
+App -> EdgeFn: POST /listings\nAuthorization: Bearer {Google ID token}
+EdgeFn -> TokenInfo: GET /tokeninfo?id_token=...
+TokenInfo --> EdgeFn: {aud, sub, email, name}
+EdgeFn -> EdgeFn: Verify aud matches client IDs\niOS: 807765...qbot\nAndroid/Web: 807765...cfdd
+EdgeFn -> EdgeFn: Derive userId = SHA-256("google:{sub}")
+EdgeFn -> DB: Upsert user {id, email, name}
+EdgeFn --> App: API response
+
+note over App, EdgeFn
+  **Google ID token** is used for ALL edge function calls
+  (listings, cases, comments, case-status, watched-cases, notifications)
+end note
+
+== 3. Realtime Setup (Supabase JWT) ==
+App -> App: Need WebSocket connection\nfor realtime updates
+App -> SupaAuth: POST /auth/v1/token?grant_type=id_token\n{provider: "google", id_token: {Google ID token}}
+SupaAuth -> SupaAuth: Validate Google token\nCreate/find Supabase user
+SupaAuth --> App: {access_token: {Supabase JWT}, ...}
+App -> App: Store Supabase access token (JWT #2)
+
+App -> RT: WSS connect\n/realtime/v1/websocket
+App -> RT: Send access_token event\n{access_token: {Supabase JWT}}
+App -> RT: phx_join postgres_changes\n{access_token: {Supabase JWT}}
+RT --> App: phx_reply ok
+
+note over App, RT
+  **Supabase JWT** is only used for the Realtime WebSocket.
+  It authenticates the WS connection so Supabase
+  can enforce RLS and filter notifications by user.
+end note
+
+== Summary ==
+note over App
+  **JWT #1 - Google ID token**
+  - Issued by: Google Sign-In
+  - Used for: All REST API calls to edge functions
+  - Validated by: auth.ts via Google tokeninfo API
+  - Audience: App's Google OAuth client IDs
+
+  **JWT #2 - Supabase access token**
+  - Issued by: Supabase Auth (/auth/v1/token)
+  - Used for: Realtime WebSocket only
+  - Obtained by: Exchanging Google ID token
+  - Purpose: Authenticate WS + filter by user
+end note
+
+@enduml

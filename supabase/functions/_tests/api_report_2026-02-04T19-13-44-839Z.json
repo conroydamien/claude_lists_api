@@ -1,0 +1,1841 @@
+[
+  {
+    "endpoint": "/listings (Circuit Court)",
+    "method": "POST",
+    "request": {
+      "date": "2026-02-04",
+      "court": "circuit-court"
+    },
+    "status": 200,
+    "response": [
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Cavan",
+        "type": "Civil",
+        "subtitle": "Updated 3/2/26",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/102A51BFBA0F3CCC80258D6500627D5E?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Clonmel",
+        "type": "Civil",
+        "subtitle": "",
+        "updated": "30 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/9BB62C72A1BA342880258D85004523DC?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Cork",
+        "type": "Civil",
+        "subtitle": "Possessions",
+        "updated": "19 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/F05CF15CB13E1FAE80258D8100530B8A?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Dublin - Court 22 Áras Uí Dhálaigh",
+        "type": "Assisted Decision-Making (Capacity)",
+        "subtitle": "ADMC",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/470737B550B1280580258D930055A9AD?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Dublin - Court 27 Four Courts",
+        "type": "Civil",
+        "subtitle": "Hearings",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/08E0B0EE434F7D0C80258D93004C8940?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Dublin - Court 28 Four Courts",
+        "type": "Civil",
+        "subtitle": "Judgments 10am",
+        "updated": "29 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/33F5951A3792164580258D8E0039908C?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Dublin - Court 28 Four Courts",
+        "type": "Civil",
+        "subtitle": "Hearings 12pm",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/51762E3B6706F4A680258D93004C76EB?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Dublin - Criminal Courts of Justice",
+        "type": "Criminal",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/43D103B794577D2E80258D930050FF88?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Limerick",
+        "type": "Civil",
+        "subtitle": "Judge White",
+        "updated": "05 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/D8C9E8694145108480258D7600372063?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Listowel",
+        "type": "Civil",
+        "subtitle": "Civil List",
+        "updated": "30 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/6912D5417024F63480258D840038700C?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Longford",
+        "type": "County Registrar's List ; civil",
+        "subtitle": "Co. Reg Motions",
+        "updated": "30 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/ACF7752F8E54865D80258D8D0041D301?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Longford",
+        "type": "Criminal",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/4D1210B97AF8ECA880258D9300545DCD?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Longford",
+        "type": "District Court Appeals ; criminal",
+        "subtitle": "",
+        "updated": "28 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/5563FCF16E930A4B80258D77003BA40D?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Nenagh",
+        "type": "Criminal",
+        "subtitle": "Provisional",
+        "updated": "05 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/2048DFF50A24AB9480258D76004ED8B4?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Nenagh",
+        "type": "Criminal",
+        "subtitle": "",
+        "updated": "28 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/0C5BF5438319AC6E80258D8D0052B951?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Newcastlewest",
+        "type": "Criminal",
+        "subtitle": "04/02/2026",
+        "updated": "27 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/9E2709EE98E35C2580258D8C003846F0?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Newcastlewest",
+        "type": "District Court Appeals ; criminal",
+        "subtitle": "",
+        "updated": "23 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/ADCDC578B6E6735E80258D880050F656?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Sligo",
+        "type": "Civil",
+        "subtitle": "",
+        "updated": "15 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/905D01BAD519C96F80258D80005A9E53?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Trim",
+        "type": "Personal Insolvency",
+        "subtitle": "",
+        "updated": "27 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/77887D1EC749A5F080258D8C00361DE5?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Wexford",
+        "type": "Civil",
+        "subtitle": "Hearings",
+        "updated": "29 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/7F4AD7E8A4C9513D80258D8E0058F9F9?OpenDocument"
+      }
+    ],
+    "duration": 431
+  },
+  {
+    "endpoint": "/listings (High Court)",
+    "method": "POST",
+    "request": {
+      "date": "2026-02-04",
+      "court": "high-court"
+    },
+    "status": 200,
+    "response": [
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Asylum",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/B6FBEF8777AA53FC80258D9300558FFB?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Bail List",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/1829122EFF98284580258D9300567910?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Chancery",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/50CC2991887781CB80258D93005D2E26?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Commercial",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/A051FC611C34430D80258D93005DF2D2?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Extradition",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/7BA7C4B6DB126E5880258D93005E8ED2?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Family Law",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/A5816D47A24BB89280258D930056CE33?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Inherent Jurisdiction (Capacity)",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/3EB2AB18070FB1D080258D93004C8993?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Judicial Review",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/C7EF0FF886621A4C80258D930052F81B?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Legal Costs Adjudicator's List",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/F197CAEDE9E4F67880258D930051583A?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Master's List",
+        "type": "",
+        "subtitle": "",
+        "updated": "29 Jan 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/3FBE3C8E952A925A80258D8E00515554?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Non Jury List (Dublin)",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/69918A7A05A662CD80258D930054108D?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Personal Injuries (Dublin)",
+        "type": "",
+        "subtitle": "",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/F404CFBDC999996380258D9300549BC6?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Today's Cases / All Lists",
+        "type": "",
+        "subtitle": "",
+        "updated": "04 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/3E08851CE7CA0E4480258D9300527D1E?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Wards of Court",
+        "type": "",
+        "subtitle": "Court 16 at 11.00",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/3CB15B3537E81F4B80258D930057DBA2?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Wards of Court",
+        "type": "",
+        "subtitle": "Court 9 at 11:30",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/1CF00FF29632DBF380258D9300582887?OpenDocument"
+      },
+      {
+        "dateText": "04 February 2026",
+        "dateIso": "2026-02-04",
+        "venue": "Wards of Court",
+        "type": "",
+        "subtitle": "Court 4 at 11.00",
+        "updated": "03 Feb 2026",
+        "sourceUrl": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/CD3BDC5D038253D580258D9300588B7B?OpenDocument"
+      }
+    ],
+    "duration": 623
+  },
+  {
+    "endpoint": "/cases (Circuit Court)",
+    "method": "POST",
+    "request": {
+      "url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/102A51BFBA0F3CCC80258D6500627D5E?OpenDocument"
+    },
+    "status": 200,
+    "response": {
+      "cases": [
+        {
+          "listNumber": 1,
+          "caseNumber": "2022/00032",
+          "title": "Avril McCabe - V - James Cahill Executor Of The Estate Of The Late James Keogan\t :Plaintiff In Person,/ A.B. O'Reilly Dolan & Co",
+          "parties": "Avril McCabe - V - James Cahill Executor Of The Estate Of The Late James Keogan\t :Plaintiff In Person,/ A.B. O'Reilly Dolan & Co",
+          "isCase": true
+        },
+        {
+          "listNumber": 2,
+          "caseNumber": "2020/00068",
+          "title": "Promontoria (Oyster) Designated Activity Company - V - John Hand : OSM Partners, / Connellan",
+          "parties": "Promontoria (Oyster) Designated Activity Company - V - John Hand : OSM Partners, / Connellan",
+          "isCase": true
+        },
+        {
+          "listNumber": 3,
+          "caseNumber": "2022/00021",
+          "title": "Laura O'Connor - V - ISS Ireland Limited Trading As ISS Facility Services And Nicola McDonald : Garrett J. Fortune & Co./ MacSweeney & Company",
+          "parties": "Laura O'Connor - V - ISS Ireland Limited Trading As ISS Facility Services And Nicola McDonald : Garrett J. Fortune & Co./ MacSweeney & Company",
+          "isCase": true
+        },
+        {
+          "listNumber": 4,
+          "caseNumber": "2024/00173",
+          "title": "Robert Sidebottom - V - Ronan McGovern : Garrett J. Fortune & Co.",
+          "parties": "Robert Sidebottom - V - Ronan McGovern : Garrett J. Fortune & Co.",
+          "isCase": true
+        }
+      ],
+      "headers": [
+        "In person before His Honour Judge Christopher Callan at 10:30 a.m.",
+        "Preliminary Issue",
+        "For Hearing"
+      ]
+    },
+    "duration": 298
+  },
+  {
+    "endpoint": "/cases (High Court)",
+    "method": "POST",
+    "request": {
+      "url": "https://legaldiary.courts.ie/legaldiary.nsf/high-court/B6FBEF8777AA53FC80258D9300558FFB?OpenDocument"
+    },
+    "status": 200,
+    "response": {
+      "cases": [
+        {
+          "listNumber": 1,
+          "caseNumber": null,
+          "title": "Non-Jury, Judicial Review and Asylum Hearings and Callover of Hearings",
+          "parties": "Non-Jury, Judicial Review and Asylum Hearings and Callover of Hearings",
+          "isCase": true
+        },
+        {
+          "listNumber": 2,
+          "caseNumber": null,
+          "title": "Case Management Hearings",
+          "parties": "Case Management Hearings",
+          "isCase": true
+        },
+        {
+          "listNumber": 3,
+          "caseNumber": null,
+          "title": "Judicial Review Ex Parte and Asylum Ex Parte Lists",
+          "parties": "Judicial Review Ex Parte and Asylum Ex Parte Lists",
+          "isCase": true
+        },
+        {
+          "listNumber": 4,
+          "caseNumber": null,
+          "title": "Judicial Review and Asylum- “Leave on Notice” Applications",
+          "parties": "Judicial Review and Asylum- “Leave on Notice” Applications",
+          "isCase": true
+        },
+        {
+          "listNumber": 5,
+          "caseNumber": null,
+          "title": "Judicial Review and Asylum- Applications to Open and Adjourn (to stop time)",
+          "parties": "Judicial Review and Asylum- Applications to Open and Adjourn (to stop time)",
+          "isCase": true
+        },
+        {
+          "listNumber": 6,
+          "caseNumber": null,
+          "title": "Matters Listed for Mention",
+          "parties": "Matters Listed for Mention",
+          "isCase": true
+        },
+        {
+          "listNumber": 7,
+          "caseNumber": null,
+          "title": "Queries to the Non-Jury/Judicial Review List mailbox",
+          "parties": "Queries to the Non-Jury/Judicial Review List mailbox",
+          "isCase": true
+        },
+        {
+          "listNumber": 8,
+          "caseNumber": null,
+          "title": "Consent Applications",
+          "parties": "Consent Applications",
+          "isCase": true
+        },
+        {
+          "listNumber": 9,
+          "caseNumber": null,
+          "title": "Obtaining a hearing date for Non-Jury Actions",
+          "parties": "Obtaining a hearing date for Non-Jury Actions",
+          "isCase": true
+        },
+        {
+          "listNumber": null,
+          "caseNumber": "02/2026",
+          "title": "09:30",
+          "parties": "09:30",
+          "isCase": true
+        },
+        {
+          "listNumber": 1,
+          "caseNumber": "H.JR.2025.0001507",
+          "title": "K v M",
+          "parties": "K v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 2,
+          "caseNumber": "H.JR.2025.0001044",
+          "title": "D v M",
+          "parties": "D v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 3,
+          "caseNumber": "H.JR.2025.0001214",
+          "title": "R v M",
+          "parties": "R v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 4,
+          "caseNumber": "H.JR.2025.0001637",
+          "title": "S v M",
+          "parties": "S v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 5,
+          "caseNumber": "H.JR.2025.0001154",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 6,
+          "caseNumber": "H.JR.2025.0000954",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 7,
+          "caseNumber": "H.JR.2025.0000417",
+          "title": "D v I",
+          "parties": "D v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 8,
+          "caseNumber": "H.JR.2025.0000358",
+          "title": "C v M",
+          "parties": "C v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 9,
+          "caseNumber": "H.JR.2025.0001078",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 10,
+          "caseNumber": "H.JR.2025.0000761",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 11,
+          "caseNumber": "H.JR.2025.0000266",
+          "title": "H v M",
+          "parties": "H v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 12,
+          "caseNumber": "H.JR.2025.0000841",
+          "title": "O v M",
+          "parties": "O v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 13,
+          "caseNumber": "H.JR.2025.0001225",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 14,
+          "caseNumber": "H.JR.2025.0000402",
+          "title": "K v I",
+          "parties": "K v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 15,
+          "caseNumber": "H.JR.2025.0001608",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 16,
+          "caseNumber": "H.JR.2025.0001358",
+          "title": "S v T",
+          "parties": "S v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 17,
+          "caseNumber": "H.JR.2025.0001056",
+          "title": "B v M",
+          "parties": "B v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 18,
+          "caseNumber": "H.JR.2025.0000748",
+          "title": "G v M",
+          "parties": "G v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 19,
+          "caseNumber": "H.JR.2024.0000727",
+          "title": "G v M",
+          "parties": "G v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 20,
+          "caseNumber": "H.JR.2025.0001257",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 21,
+          "caseNumber": "H.JR.2025.0001258",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 22,
+          "caseNumber": "H.JR.2025.0001342",
+          "title": "D v T",
+          "parties": "D v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 23,
+          "caseNumber": "H.JR.2025.0000975",
+          "title": "N v C",
+          "parties": "N v C",
+          "isCase": true
+        },
+        {
+          "listNumber": 24,
+          "caseNumber": "H.JR.2025.0001424",
+          "title": "G v M",
+          "parties": "G v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 25,
+          "caseNumber": "H.JR.2025.0001515",
+          "title": "E v I",
+          "parties": "E v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 26,
+          "caseNumber": "H.JR.2025.0001284",
+          "title": "C v I",
+          "parties": "C v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 27,
+          "caseNumber": "H.JR.2025.0001438",
+          "title": "M v M",
+          "parties": "M v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 28,
+          "caseNumber": "H.JR.2025.0001229",
+          "title": "O v I",
+          "parties": "O v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 29,
+          "caseNumber": "H.JR.2025.0001271",
+          "title": "B v I",
+          "parties": "B v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 30,
+          "caseNumber": "H.JR.2025.0001071",
+          "title": "E v I",
+          "parties": "E v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 31,
+          "caseNumber": "H.JR.2025.0000811",
+          "title": "L v I",
+          "parties": "L v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 32,
+          "caseNumber": "H.JR.2025.0000638",
+          "title": "S v M",
+          "parties": "S v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 33,
+          "caseNumber": "H.JR.2025.0000081",
+          "title": "P v I",
+          "parties": "P v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 34,
+          "caseNumber": "H.JR.2025.0001107",
+          "title": "B v I",
+          "parties": "B v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 35,
+          "caseNumber": "H.JR.2025.0001394",
+          "title": "D v I",
+          "parties": "D v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 36,
+          "caseNumber": "H.JR.2025.0001514",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 37,
+          "caseNumber": "H.JR.2025.0000818",
+          "title": "C v M",
+          "parties": "C v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 38,
+          "caseNumber": "H.JR.2025.0001445",
+          "title": "U v M",
+          "parties": "U v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 39,
+          "caseNumber": "H.JR.2025.0000737",
+          "title": "B v I",
+          "parties": "B v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 40,
+          "caseNumber": "H.JR.2025.0000337",
+          "title": "E v M",
+          "parties": "E v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 41,
+          "caseNumber": "H.JR.2025.0000799",
+          "title": "M v I",
+          "parties": "M v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 42,
+          "caseNumber": "H.JR.2025.0001496",
+          "title": "H v M",
+          "parties": "H v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 43,
+          "caseNumber": "H.JR.2025.0001158",
+          "title": "K v C",
+          "parties": "K v C",
+          "isCase": true
+        },
+        {
+          "listNumber": 44,
+          "caseNumber": "H.JR.2025.0001393",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 45,
+          "caseNumber": "H.JR.2025.0000984",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 46,
+          "caseNumber": "H.JR.2025.0001571",
+          "title": "M v M",
+          "parties": "M v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 47,
+          "caseNumber": "H.JR.2025.0001325",
+          "title": "H v M",
+          "parties": "H v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 48,
+          "caseNumber": "H.JR.2025.0001008",
+          "title": "G v I",
+          "parties": "G v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 49,
+          "caseNumber": "H.JR.2025.0000886",
+          "title": "N v T",
+          "parties": "N v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 50,
+          "caseNumber": "H.JR.2025.0001052",
+          "title": "B v M",
+          "parties": "B v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 51,
+          "caseNumber": "H.JR.2025.0001036",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 52,
+          "caseNumber": "H.JR.2025.0001221",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 53,
+          "caseNumber": "H.JR.2025.0001165",
+          "title": "K v I",
+          "parties": "K v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 54,
+          "caseNumber": "H.JR.2025.0000328",
+          "title": "B v I",
+          "parties": "B v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 55,
+          "caseNumber": "H.JR.2025.0000755",
+          "title": "K v I",
+          "parties": "K v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 56,
+          "caseNumber": "H.JR.2025.0001191",
+          "title": "S v T",
+          "parties": "S v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 57,
+          "caseNumber": "H.JR.2025.0001166",
+          "title": "K v M",
+          "parties": "K v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 58,
+          "caseNumber": "H.JR.2025.0000540",
+          "title": "K v I",
+          "parties": "K v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 59,
+          "caseNumber": "H.JR.2025.0000148",
+          "title": "K v M",
+          "parties": "K v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 60,
+          "caseNumber": "H.JR.2025.0001094",
+          "title": "L v I",
+          "parties": "L v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 61,
+          "caseNumber": "H.JR.2025.0001195",
+          "title": "M v M",
+          "parties": "M v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 62,
+          "caseNumber": "H.JR.2024.0001098",
+          "title": "S v M",
+          "parties": "S v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 63,
+          "caseNumber": "H.JR.2025.0000568",
+          "title": "E v T",
+          "parties": "E v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 64,
+          "caseNumber": "H.JR.2025.0000958",
+          "title": "L v I",
+          "parties": "L v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 65,
+          "caseNumber": "H.JR.2025.0001167",
+          "title": "G v I",
+          "parties": "G v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 66,
+          "caseNumber": "H.JR.2025.0001180",
+          "title": "E v M",
+          "parties": "E v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 67,
+          "caseNumber": "H.JR.2025.0001192",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 68,
+          "caseNumber": "H.JR.2024.0001599",
+          "title": "N v M",
+          "parties": "N v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 69,
+          "caseNumber": "H.JR.2025.0000585",
+          "title": "T v I",
+          "parties": "T v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 70,
+          "caseNumber": "H.JR.2024.0000466",
+          "title": "A v T",
+          "parties": "A v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 71,
+          "caseNumber": "H.JR.2025.0001157",
+          "title": "Y v M",
+          "parties": "Y v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 72,
+          "caseNumber": "H.JR.2025.0001209",
+          "title": "N v M",
+          "parties": "N v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 73,
+          "caseNumber": "H.JR.2025.0001217",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 74,
+          "caseNumber": "H.JR.2025.0000207",
+          "title": "M v M",
+          "parties": "M v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 75,
+          "caseNumber": "H.JR.2025.0001614",
+          "title": "T v M",
+          "parties": "T v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 76,
+          "caseNumber": "H.JR.2025.0000109",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 77,
+          "caseNumber": "H.JR.2025.0001033",
+          "title": "A v T",
+          "parties": "A v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 78,
+          "caseNumber": "H.JR.2025.0001214",
+          "title": "R v M",
+          "parties": "R v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 79,
+          "caseNumber": "H.JR.2025.0000518",
+          "title": "U v I",
+          "parties": "U v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 80,
+          "caseNumber": "H.JR.2025.0001173",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 81,
+          "caseNumber": "H.JR.2025.0001198",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 82,
+          "caseNumber": "H.JR.2025.0001045",
+          "title": "B v M",
+          "parties": "B v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 83,
+          "caseNumber": "H.JR.2025.0001530",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 84,
+          "caseNumber": "H.JR.2025.0001529",
+          "title": "K v M",
+          "parties": "K v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 85,
+          "caseNumber": "H.JR.2025.0001253",
+          "title": "B v T",
+          "parties": "B v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 86,
+          "caseNumber": "H.JR.2025.0001527",
+          "title": "Y v M",
+          "parties": "Y v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 87,
+          "caseNumber": "H.JR.2025.0001543",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 88,
+          "caseNumber": "H.JR.2025.0001505",
+          "title": "M v T",
+          "parties": "M v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 89,
+          "caseNumber": "H.JR.2025.0000853",
+          "title": "K v I",
+          "parties": "K v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 90,
+          "caseNumber": "H.JR.2025.0000814",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 91,
+          "caseNumber": "H.JR.2025.0000151",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 92,
+          "caseNumber": "H.JR.2025.0000395",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 93,
+          "caseNumber": "H.JR.2025.0001404",
+          "title": "R v I",
+          "parties": "R v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 94,
+          "caseNumber": "H.JR.2025.0001429",
+          "title": "N v I",
+          "parties": "N v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 95,
+          "caseNumber": "H.JR.2025.0000338",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 96,
+          "caseNumber": "H.JR.2025.0001454",
+          "title": "C v I",
+          "parties": "C v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 97,
+          "caseNumber": "H.JR.2025.0001279",
+          "title": "M v I",
+          "parties": "M v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 98,
+          "caseNumber": "H.JR.2025.0001290",
+          "title": "T v M",
+          "parties": "T v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 99,
+          "caseNumber": "H.JR.2025.0000651",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 100,
+          "caseNumber": "H.JR.2024.0000995",
+          "title": "M v I",
+          "parties": "M v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 101,
+          "caseNumber": "H.JR.2025.0000658",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 102,
+          "caseNumber": "H.JR.2025.0000481",
+          "title": "T v M",
+          "parties": "T v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 103,
+          "caseNumber": "H.JR.2025.0001440",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 104,
+          "caseNumber": "H.JR.2025.0000890",
+          "title": "L v I",
+          "parties": "L v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 105,
+          "caseNumber": "H.JR.2025.0001249",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 106,
+          "caseNumber": "H.JR.2025.0000810",
+          "title": "S v M",
+          "parties": "S v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 107,
+          "caseNumber": "H.JR.2025.0001268",
+          "title": "S v C",
+          "parties": "S v C",
+          "isCase": true
+        },
+        {
+          "listNumber": 108,
+          "caseNumber": "H.JR.2025.0000555",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 109,
+          "caseNumber": "H.JR.2025.0001226",
+          "title": "R v I",
+          "parties": "R v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 110,
+          "caseNumber": "H.JR.2025.0001357",
+          "title": "T v T",
+          "parties": "T v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 111,
+          "caseNumber": "H.JR.2025.0001296",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 112,
+          "caseNumber": "H.JR.2025.0000735",
+          "title": "L v I",
+          "parties": "L v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 113,
+          "caseNumber": "H.JR.2025.0001190",
+          "title": "S v T",
+          "parties": "S v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 114,
+          "caseNumber": "H.JR.2025.0001004",
+          "title": "J v I",
+          "parties": "J v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 115,
+          "caseNumber": "H.JR.2025.0001485",
+          "title": "K v I",
+          "parties": "K v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 116,
+          "caseNumber": "H.JR.2025.0001149",
+          "title": "O v I",
+          "parties": "O v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 117,
+          "caseNumber": "H.JR.2025.0000374",
+          "title": "M v I",
+          "parties": "M v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 118,
+          "caseNumber": "H.JR.2025.0000375",
+          "title": "O v I",
+          "parties": "O v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 119,
+          "caseNumber": "H.JR.2025.0001436",
+          "title": "M v M",
+          "parties": "M v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 120,
+          "caseNumber": "H.JR.2025.0001558",
+          "title": "O v M",
+          "parties": "O v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 121,
+          "caseNumber": "H.JR.2025.0001528",
+          "title": "V v M",
+          "parties": "V v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 122,
+          "caseNumber": "H.JR.2025.0001521",
+          "title": "O v I",
+          "parties": "O v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 123,
+          "caseNumber": "H.JR.2025.0000522",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 124,
+          "caseNumber": "H.JR.2025.0001288",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 125,
+          "caseNumber": "H.JR.2025.0001525",
+          "title": "M v I",
+          "parties": "M v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 126,
+          "caseNumber": "H.JR.2025.0001092",
+          "title": "M v I",
+          "parties": "M v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 127,
+          "caseNumber": "H.JR.2025.0001112",
+          "title": "M v I",
+          "parties": "M v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 128,
+          "caseNumber": "H.JR.2025.0001503",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 129,
+          "caseNumber": "H.JR.2025.0001356",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 130,
+          "caseNumber": "H.JR.2025.0001422",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 131,
+          "caseNumber": "H.JR.2025.0001102",
+          "title": "G v I",
+          "parties": "G v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 132,
+          "caseNumber": "H.JR.2025.0000482",
+          "title": "I v I",
+          "parties": "I v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 133,
+          "caseNumber": "H.JR.2025.0000760",
+          "title": "J v M",
+          "parties": "J v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 134,
+          "caseNumber": "H.JR.2025.0001281",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 135,
+          "caseNumber": "H.JR.2025.0000813",
+          "title": "H v M",
+          "parties": "H v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 136,
+          "caseNumber": "H.JR.2025.0000828",
+          "title": "L v I",
+          "parties": "L v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 137,
+          "caseNumber": "H.JR.2025.0001504",
+          "title": "M v T",
+          "parties": "M v T",
+          "isCase": true
+        },
+        {
+          "listNumber": 138,
+          "caseNumber": "H.JR.2025.0001070",
+          "title": "N v M",
+          "parties": "N v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 139,
+          "caseNumber": "H.JR.2025.0000891",
+          "title": "G v M",
+          "parties": "G v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 140,
+          "caseNumber": "H.JR.2025.0001392",
+          "title": "T v I",
+          "parties": "T v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 141,
+          "caseNumber": "H.JR.2025.0000648",
+          "title": "Y v M",
+          "parties": "Y v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 142,
+          "caseNumber": "H.JR.2024.0001601",
+          "title": "L v I",
+          "parties": "L v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 143,
+          "caseNumber": "H.JR.2025.0001245",
+          "title": "G v M",
+          "parties": "G v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 144,
+          "caseNumber": "H.JR.2025.0001176",
+          "title": "P v M",
+          "parties": "P v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 145,
+          "caseNumber": "H.JR.2025.0001207",
+          "title": "I v I",
+          "parties": "I v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 146,
+          "caseNumber": "H.JR.2025.0001136",
+          "title": "N v I",
+          "parties": "N v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 147,
+          "caseNumber": "H.JR.2025.0001446",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 148,
+          "caseNumber": "H.JR.2025.0001046",
+          "title": "G v M",
+          "parties": "G v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 149,
+          "caseNumber": "H.JR.2025.0000293",
+          "title": "Y v M",
+          "parties": "Y v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 150,
+          "caseNumber": "H.JR.2025.0001550",
+          "title": "M v M",
+          "parties": "M v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 151,
+          "caseNumber": "H.JR.2025.0001536",
+          "title": "I v I",
+          "parties": "I v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 152,
+          "caseNumber": "H.JR.2025.0001494",
+          "title": "K v I",
+          "parties": "K v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 153,
+          "caseNumber": "H.JR.2025.0001553",
+          "title": "C v M",
+          "parties": "C v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 154,
+          "caseNumber": "H.JR.2025.0001531",
+          "title": "O v I",
+          "parties": "O v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 155,
+          "caseNumber": "H.JR.2025.0001540",
+          "title": "M v M",
+          "parties": "M v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 156,
+          "caseNumber": "H.JR.2025.0001533",
+          "title": "D v I",
+          "parties": "D v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 157,
+          "caseNumber": "H.JR.2025.0001526",
+          "title": "A v M",
+          "parties": "A v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 158,
+          "caseNumber": "H.JR.2025.0001347",
+          "title": "R -v- I",
+          "parties": "R -v- I",
+          "isCase": true
+        },
+        {
+          "listNumber": 159,
+          "caseNumber": "H.JR.2025.0001536",
+          "title": "I v I",
+          "parties": "I v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 160,
+          "caseNumber": "H.JR.2025.0001652",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 161,
+          "caseNumber": "H.JR.2025.0001113",
+          "title": "L v I",
+          "parties": "L v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 162,
+          "caseNumber": "H.JR.2025.0000220",
+          "title": "S v I",
+          "parties": "S v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 163,
+          "caseNumber": "H.JR.2025.0001222",
+          "title": "D v I",
+          "parties": "D v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 164,
+          "caseNumber": "H.JR.2025.0000786",
+          "title": "G v I",
+          "parties": "G v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 165,
+          "caseNumber": "H.JR.2025.0000788",
+          "title": "M v I",
+          "parties": "M v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 166,
+          "caseNumber": "H.JR.2025.0000711",
+          "title": "B v I",
+          "parties": "B v I",
+          "isCase": true
+        },
+        {
+          "listNumber": 167,
+          "caseNumber": "H.JR.2025.0000351",
+          "title": "S v M",
+          "parties": "S v M",
+          "isCase": true
+        },
+        {
+          "listNumber": 168,
+          "caseNumber": "H.JR.2025.0001313",
+          "title": "A v I",
+          "parties": "A v I",
+          "isCase": true
+        }
+      ],
+      "headers": [
+        "Non-Jury, Judicial Review and Asylum, Immigration and Citizenship List Notice- Lodgement of Papers and Correspondence with Registrars",
+        "31st October 2023",
+        "Please take notice of the following directions regarding the lodgement of papers and correspondence with registrars:",
+        "Papers for hearings in Non-Jury, Judicial Review and Asylum Lists must be lodged in the List Room no later than the Tuesday of the week prior to the Hearing date. (Please note, this deadline does not apply to the Monday Judicial Review ex parte list and the Monday Asylum and Immigration ex parte list- for information on lodgement for that list, see item 3 below).",
+        "Parties in Asylum, Immigration and Citizenship List hearings should note that the Tuesday deadline supersedes the deadline for lodgement of papers for hearings included in in Asylum Practice direction HC81.",
+        "Any application for late lodgement of papers must be made to the List Judge at the callover on the Thursday of the week prior to the Hearing date.",
+        "The callover takes placed on a hybrid basis and begins at 10 a.m. Parties must also indicate at the callover whether the hearing will be physical, hybrid or remote. If no preference is given, the hearing will be physical. If there is no attendance at the callover, the hearing will be struck out.",
+        "Correspondence to the registrars/mailbox/Judicial Assistant seeking permission for the late lodgement of papers, requests to change the mode of hearing or applications to re-instate hearings that have been struck out will not be acknowledged. No additional/missing documents will be accepted by email. Any further applications must be made to the Court at the end of the list any day.",
+        "Papers for hearings will not be returned and will be shredded. They must be re-lodged prior to any new hearing date.",
+        "Lodgement of papers in advance is no longer required for Case Management hearings. If there are papers which the parties wish to bring to the attention of the Court, these may be handed in by the solicitor when the matter is called.",
+        "Papers for Judicial Review ex parte applications listed in the Monday Judicial Review Ex parte list and the Monday Asylum Ex parte list must be lodged in the List Room no later than the Monday of the week prior to the list (i.e.no later than 7 days before the Listing). Due to capacity issues in the List Room, papers can only be accepted from a fortnight before the listing date up until the Monday of the week prior to the Listing.",
+        "Papers for leave applications will not be returned and will be shredded They must be re-lodged prior to any adjourned date.",
+        "If the Court directs that an application for leave to seek Judicial Review is to be made on notice, the applicant/applicant's solicitor must liaise with the solicitor for the respondent prior to the return date to ascertain if the leave application will be contested.",
+        "If the leave application will not be contested, the applicant/applicant's solicitor must hand in a copy of the Statement of Grounds to the Judge in court.",
+        "If the leave application is contested by the respondent(s), a hearing date will be given and papers must be lodged in the List Room prior to the hearing in accordance with Item 1 above.",
+        "Applications to open a Judicial Review for the purposes of stopping time only can be made at the end of the list any day, provided the case has been issued by the Central Office and a record number has been obtained.",
+        "Practitioners do not have to email the registrar to ask for permission to mention the proceedings in advance. Booklets of papers are not required in Court for the application to open the Judicial Review for the purposes of stopping time.",
+        "Papers are not to be lodged in the List Room for matters listed for mention. If there are papers which the parties wish to bring to the attention of the Court, these are to be handed in when the matter is called.",
+        "Emails to registrars/Judicial Assistants regarding papers/correspondence for the Judge will not be acknowledged.",
+        "Parties should be mindful of the volume of correspondence that registrars are receiving and must consult High Court Search, the list diaries and Today's cases on the Legal Diary and this notice before contacting the registrar/mailbox.",
+        "The Non Jury and Judicial Review mailbox (nonjuryjudicialreview@courts.ie) should primarily be used to send in terms of orders or to request that certified actions are listed for mention to get a hearing date.",
+        "The most efficient way of raising queries is to mention your query to the Non-Jury and Judicial Review registrar before the List or at the end of the list on Tuesday-Friday inclusive.",
+        "Most other requests to list matters for mention can mentioned to the Judge at the end of the List on Tuesday (in respect of Judicial Review proceedings), Wednesday (in respect of non-Jury proceedings) or Fridays (in respect of Asylum applications).",
+        "If sending a query to the mailbox, please ensure the record number is quoted in the subject line of the correspondence.",
+        "Consent applications in the Non-Jury and Judicial Review Lists will be taken by the registrar on Tuesday, Wednesday and Friday from 10:15. On Thursday, consent applications will be taken at the end of the Callover of hearings.",
+        "Once the Certificate of Readiness has been filed in the Central Office, please email nonjuryjudicialreview@courts.ie along with a soft copy of the Certificate. The action will be listed for mention on the next available Wednesday.",
+        "Once the registrar provides the date, the requesting party must then inform the other party/parties of the date.",
+        "Court List (Web)",
+        "Before: The Hon. Mr. Justice Mark J. Dunne",
+        "At: Four Courts - Court 12",
+        "List Type: ASYLUM POST-LEAVE",
+        "Total: 168",
+        "Position\tCase Number\tCase Title"
+      ]
+    },
+    "duration": 308
+  },
+  {
+    "endpoint": "/comments (GET)",
+    "method": "GET",
+    "request": "/comments?list_source_url=https%3A%2F%2Flegaldiary.courts.ie%2Flegaldiary.nsf%2Fcircuit-court%2F102A51BFBA0F3CCC80258D6500627D5E%3FOpenDocument&case_key=TEST%7C1",
+    "status": 400,
+    "response": {
+      "error": "case_number or case_numbers is required"
+    },
+    "duration": 443
+  },
+  {
+    "endpoint": "/case-status (GET)",
+    "method": "GET",
+    "request": "/case-status?list_source_url=https%3A%2F%2Flegaldiary.courts.ie%2Flegaldiary.nsf%2Fcircuit-court%2F102A51BFBA0F3CCC80258D6500627D5E%3FOpenDocument",
+    "status": 400,
+    "response": {
+      "error": "list_source_url and case_numbers are required"
+    },
+    "duration": 377
+  },
+  {
+    "endpoint": "/watched-cases (GET)",
+    "method": "GET",
+    "request": "/watched-cases",
+    "status": 200,
+    "response": [
+      {
+        "id": 76,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/280D83D6404BEBC080258D8D0059F365?OpenDocument",
+        "case_number": "2025/03248",
+        "source": "manual",
+        "created_at": "2026-02-02T23:36:49.331878+00:00"
+      },
+      {
+        "id": 77,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/280D83D6404BEBC080258D8D0059F365?OpenDocument",
+        "case_number": "2025/03249",
+        "source": "manual",
+        "created_at": "2026-02-03T00:03:45.10285+00:00"
+      },
+      {
+        "id": 79,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/E6C487C6A63C2B9080258D8F0040DD77?OpenDocument",
+        "case_number": "2021/03098",
+        "source": "manual",
+        "created_at": "2026-02-03T00:38:36.522228+00:00"
+      },
+      {
+        "id": 80,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/E6C487C6A63C2B9080258D8F0040DD77?OpenDocument",
+        "case_number": "2023/00071",
+        "source": "manual",
+        "created_at": "2026-02-03T20:44:30.075316+00:00"
+      },
+      {
+        "id": 81,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/08E0B0EE434F7D0C80258D93004C8940?OpenDocument",
+        "case_number": "2025/00027",
+        "source": "manual",
+        "created_at": "2026-02-04T11:59:03.162547+00:00"
+      },
+      {
+        "id": 82,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/08E0B0EE434F7D0C80258D93004C8940?OpenDocument",
+        "case_number": "2023/00638",
+        "source": "manual",
+        "created_at": "2026-02-04T12:02:31.845792+00:00"
+      }
+    ],
+    "duration": 716
+  },
+  {
+    "endpoint": "/notifications (GET)",
+    "method": "GET",
+    "request": "/notifications",
+    "status": 200,
+    "response": [
+      {
+        "id": 305,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "type": "comment",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/08E0B0EE434F7D0C80258D93004C8940?OpenDocument",
+        "case_number": "2023/00638",
+        "case_title": null,
+        "actor_name": "Damien Conroy",
+        "actor_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "content": "hey",
+        "read": false,
+        "created_at": "2026-02-04T12:03:21.305115+00:00"
+      },
+      {
+        "id": 304,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "type": "status_undone",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/08E0B0EE434F7D0C80258D93004C8940?OpenDocument",
+        "case_number": "2023/00638",
+        "case_title": null,
+        "actor_name": "Someone",
+        "actor_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "content": null,
+        "read": false,
+        "created_at": "2026-02-04T12:02:59.559394+00:00"
+      },
+      {
+        "id": 303,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "type": "status_done",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/08E0B0EE434F7D0C80258D93004C8940?OpenDocument",
+        "case_number": "2023/00638",
+        "case_title": null,
+        "actor_name": "Someone",
+        "actor_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "content": null,
+        "read": false,
+        "created_at": "2026-02-04T12:02:56.60498+00:00"
+      },
+      {
+        "id": 302,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "type": "status_undone",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/08E0B0EE434F7D0C80258D93004C8940?OpenDocument",
+        "case_number": "2023/00638",
+        "case_title": null,
+        "actor_name": "Someone",
+        "actor_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "content": null,
+        "read": false,
+        "created_at": "2026-02-04T12:02:47.053447+00:00"
+      },
+      {
+        "id": 301,
+        "user_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "type": "status_done",
+        "list_source_url": "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/08E0B0EE434F7D0C80258D93004C8940?OpenDocument",
+        "case_number": "2025/00027",
+        "case_title": null,
+        "actor_name": "Someone",
+        "actor_id": "305dc248-5bb9-4e30-aa05-1c185c9a99e8",
+        "content": null,
+        "read": false,
+        "created_at": "2026-02-04T12:01:27.908615+00:00"
+      }
+    ],
+    "duration": 511
+  }
+]

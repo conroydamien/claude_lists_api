@@ -1,0 +1,69 @@
+@startuml android
+title Android App (Kotlin / Jetpack Compose)
+
+package "UI Screens" {
+  [SignInScreen]
+  [ListsScreen]
+  [ItemsScreen]
+  [CommentsSheet]
+  [NotificationsSheet]
+}
+
+package "ViewModel" {
+  [MainViewModel]
+  [UiState]
+  [CourtType\nCIRCUIT | HIGH | COURT_OF_APPEAL] as CourtType
+}
+
+package "API Layer" {
+  [CourtListsApi]
+  [RealtimeClient]
+  [AuthManager]
+}
+
+package "Models" {
+  [CourtList]
+  [CaseItem]
+  [Comment]
+  [AppNotification]
+}
+
+[CourtListsApplication] as App
+
+SignInScreen --> AuthManager : sign in
+ListsScreen --> MainViewModel : observe
+ItemsScreen --> MainViewModel : observe
+CommentsSheet --> MainViewModel : send/delete
+NotificationsSheet --> MainViewModel : mark read
+
+MainViewModel --> UiState : emits StateFlow
+MainViewModel --> CourtType : filter
+MainViewModel --> CourtListsApi : REST calls
+MainViewModel --> AuthManager : auth state
+MainViewModel ..> App : collects SharedFlows
+
+App *-- CourtListsApi
+App *-- RealtimeClient
+App *-- AuthManager
+
+CourtListsApi --> AuthManager : get token
+RealtimeClient --> AuthManager : get token
+
+CourtListsApi ..> CourtList : returns
+CourtListsApi ..> CaseItem : returns
+CourtListsApi ..> Comment : returns
+CourtListsApi ..> AppNotification : returns
+
+note right of CourtListsApi
+  Ktor + OkHttp
+  Bearer: Google ID token
+  Base: supabase.co/functions/v1
+end note
+
+note right of RealtimeClient
+  WebSocket to Supabase Realtime
+  Subscribes: case_status, comments,
+  notifications, watched_cases
+end note
+
+@enduml

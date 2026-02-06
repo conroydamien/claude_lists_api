@@ -98,16 +98,47 @@ serve(async (req) => {
           return errorResponse('list_source_url, case_number, and content are required');
         }
 
+        const authorName = user.name || user.email || 'Anonymous';
+
         const { error } = await db.from('comments').insert({
           list_source_url: body.list_source_url,
           case_number: body.case_number,
           user_id: user.id,
-          author_name: user.name || user.email || 'Anonymous',
+          author_name: authorName,
           content: body.content,
           urgent: body.urgent || false,
         });
 
         if (error) throw error;
+
+        // Create notifications for watchers in background (don't block response)
+        (async () => {
+          try {
+            const { data: watchers } = await db
+              .from('watched_cases')
+              .select('user_id')
+              .eq('list_source_url', body.list_source_url)
+              .eq('case_number', body.case_number)
+              .neq('user_id', user.id);
+
+            if (watchers && watchers.length > 0) {
+              const notifications = watchers.map((w: { user_id: string }) => ({
+                user_id: w.user_id,
+                type: 'comment',
+                list_source_url: body.list_source_url,
+                case_number: body.case_number,
+                actor_id: user.id,
+                actor_name: authorName,
+                content: body.content.substring(0, 100),
+              }));
+
+              await db.from('notifications').insert(notifications);
+            }
+          } catch (e) {
+            console.error('Failed to create notifications:', e);
+          }
+        })();
+
         return jsonResponse({ message: 'Comment added' }, 201);
       }
 

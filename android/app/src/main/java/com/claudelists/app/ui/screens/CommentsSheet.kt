@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material3.*
 import androidx.compose.ui.graphics.Color
@@ -27,7 +28,8 @@ fun CommentsSheet(
     currentUserId: String,
     onDismiss: () -> Unit,
     onSendComment: (String, Boolean) -> Unit,
-    onDeleteComment: (Comment) -> Unit
+    onDeleteComment: (Comment) -> Unit,
+    onShareComment: (Comment) -> Unit
 ) {
     var commentText by remember { mutableStateOf("") }
     var isUrgent by remember { mutableStateOf(false) }
@@ -94,7 +96,8 @@ fun CommentsSheet(
                         CommentItem(
                             comment = comment,
                             isOwn = comment.userId == currentUserId,
-                            onDelete = { onDeleteComment(comment) }
+                            onDelete = { onDeleteComment(comment) },
+                            onShare = { onShareComment(comment) }
                         )
                     }
                 }
@@ -175,7 +178,8 @@ fun CommentsSheet(
 fun CommentItem(
     comment: Comment,
     isOwn: Boolean,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onShare: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
     val formattedDate = remember(comment.createdAt) {
@@ -229,17 +233,30 @@ fun CommentItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                if (isOwn) {
+                Row {
                     IconButton(
-                        onClick = onDelete,
+                        onClick = onShare,
                         modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete",
+                            Icons.Default.Share,
+                            contentDescription = "Share",
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.error
+                            tint = MaterialTheme.colorScheme.primary
                         )
+                    }
+                    if (isOwn) {
+                        IconButton(
+                            onClick = onDelete,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }

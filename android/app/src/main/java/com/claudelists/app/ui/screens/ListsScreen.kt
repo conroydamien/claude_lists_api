@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.claudelists.app.api.CourtList
+import com.claudelists.app.viewmodel.CourtType
 import com.claudelists.app.viewmodel.UiState
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -38,6 +39,7 @@ fun ListsScreen(
     uiState: UiState,
     onDateChange: (String?) -> Unit,
     onVenueChange: (String?) -> Unit,
+    onCourtChange: (CourtType) -> Unit,
     onListSelect: (CourtList) -> Unit,
     onSignOut: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
@@ -84,7 +86,24 @@ fun ListsScreen(
             .padding(padding)
             .padding(16.dp)
     ) {
-        // Filters row
+        // Court type selector
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CourtType.entries.forEach { court ->
+                FilterChip(
+                    selected = uiState.selectedCourt == court,
+                    onClick = { onCourtChange(court) },
+                    label = { Text(court.displayName) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Date and venue filters row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)

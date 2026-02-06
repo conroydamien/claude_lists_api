@@ -1,0 +1,569 @@
+openapi: 3.0.3
+info:
+  title: Court Lists API
+  description: Backend API for the Court Lists mobile app - fetches and manages Irish court listings
+  version: 1.0.0
+servers:
+  - url: https://fbiissfiqgtlenxkjuwv.supabase.co/functions/v1
+    description: Supabase Edge Functions
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Google ID Token (not Supabase JWT).
+        Obtained via Google Sign-In on iOS/Android.
+        Backend validates against oauth2.googleapis.com/tokeninfo.
+        User ID is derived from Google ID via SHA-256 hash formatted as UUID.
+
+  schemas:
+    DiaryEntry:
+      type: object
+      properties:
+        dateText:
+          type: string
+          example: "Monday 3rd February 2026"
+        dateIso:
+          type: string
+          format: date
+          example: "2026-02-03"
+        venue:
+          type: string
+          example: "Dublin"
+        type:
+          type: string
+          example: "Criminal"
+        subtitle:
+          type: string
+          example: "Judge Smith"
+        updated:
+          type: string
+          example: "02/02/2026"
+        sourceUrl:
+          type: string
+          format: uri
+          example: "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/ABC123"
+
+    ParsedCase:
+      type: object
+      properties:
+        listNumber:
+          type: integer
+          nullable: true
+          example: 1
+        listSuffix:
+          type: string
+          nullable: true
+          description: Single character suffix for items like "4a", "10b"
+          example: "a"
+        caseNumber:
+          type: string
+          nullable: true
+          example: "2024/1234"
+        title:
+          type: string
+          example: "Smith v Jones"
+        parties:
+          type: string
+          nullable: true
+          example: "Smith v Jones"
+        isCase:
+          type: boolean
+          example: true
+
+    CasesResponse:
+      type: object
+      properties:
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParsedCase'
+        headers:
+          type: array
+          items:
+            type: string
+          example: ["FOR MENTION", "AT 10:30"]
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        list_source_url:
+          type: string
+        case_key:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+        author_name:
+          type: string
+        content:
+          type: string
+        is_urgent:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    CaseStatus:
+      type: object
+      properties:
+        list_source_url:
+          type: string
+        case_key:
+          type: string
+        is_done:
+          type: boolean
+        updated_by:
+          type: string
+          format: uuid
+        updated_at:
+          type: string
+          format: date-time
+
+    WatchedCase:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        list_source_url:
+          type: string
+        case_key:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [comment, status_change]
+        list_source_url:
+          type: string
+        case_number:
+          type: string
+          nullable: true
+        message:
+          type: string
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+paths:
+  /listings:
+    get:
+      summary: Get court listings
+      description: Fetches court listings from courts.ie for a specific date and court type
+      tags: [Listings]
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2026-02-03"
+        - name: court
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [circuit-court, high-court, court-of-appeal]
+            default: circuit-court
+      responses:
+        '200':
+          description: List of court diary entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiaryEntry'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Get court listings (POST)
+      description: Same as GET but accepts JSON body
+      tags: [Listings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date]
+              properties:
+                date:
+                  type: string
+                  format: date
+                  example: "2026-02-03"
+                court:
+                  type: string
+                  enum: [circuit-court, high-court, court-of-appeal]
+                  default: circuit-court
+      responses:
+        '200':
+          description: List of court diary entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiaryEntry'
+
+  /cases:
+    get:
+      summary: Get cases from a list
+      description: Fetches and parses case details from a specific court list URL
+      tags: [Cases]
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+          example: "https://legaldiary.courts.ie/legaldiary.nsf/circuit-court/ABC123"
+      responses:
+        '200':
+          description: Parsed cases and headers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasesResponse'
+        '400':
+          description: Invalid URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Get cases from a list (POST)
+      description: Same as GET but accepts JSON body
+      tags: [Cases]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Parsed cases and headers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasesResponse'
+
+  /case-status:
+    get:
+      summary: Get case statuses
+      description: Get done/undone status for cases in a list
+      tags: [Case Status]
+      parameters:
+        - name: list_source_url
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Map of case_key to status
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/CaseStatus'
+
+    post:
+      summary: Toggle case status
+      description: Toggle done/undone status for a case. Notifies watchers of the change.
+      tags: [Case Status]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [list_source_url, case_key]
+              properties:
+                list_source_url:
+                  type: string
+                case_key:
+                  type: string
+                  description: "Format: caseNumber|listNumber or listNumber if no case number"
+                is_done:
+                  type: boolean
+                  description: "If omitted, toggles current state"
+      responses:
+        '200':
+          description: Updated status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseStatus'
+
+  /comments:
+    get:
+      summary: Get comments
+      description: Get comments for a specific case or list
+      tags: [Comments]
+      parameters:
+        - name: list_source_url
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: case_key
+          in: query
+          required: true
+          schema:
+            type: string
+            description: "Use '__LIST__' for list-level comments"
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+
+    post:
+      summary: Create comment
+      description: Add a new comment to a case or list. Notifies watchers.
+      tags: [Comments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [list_source_url, case_key, content]
+              properties:
+                list_source_url:
+                  type: string
+                case_key:
+                  type: string
+                content:
+                  type: string
+                  maxLength: 1000
+                is_urgent:
+                  type: boolean
+                  default: false
+                  description: "Marks comment with red hand icon for 'needs help'"
+      responses:
+        '201':
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+    delete:
+      summary: Delete comment
+      description: Delete a comment (only owner can delete)
+      tags: [Comments]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /watched-cases:
+    get:
+      summary: Get watched cases
+      description: Get all cases/lists the user is watching
+      tags: [Watched Cases]
+      responses:
+        '200':
+          description: List of watched cases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WatchedCase'
+
+    post:
+      summary: Watch a case
+      description: Start watching a case or list for updates
+      tags: [Watched Cases]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [list_source_url, case_key]
+              properties:
+                list_source_url:
+                  type: string
+                case_key:
+                  type: string
+                  description: "Use '__LIST__' suffix for watching entire lists"
+      responses:
+        '201':
+          description: Watch created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchedCase'
+
+    delete:
+      summary: Unwatch a case
+      description: Stop watching a case or list
+      tags: [Watched Cases]
+      parameters:
+        - name: list_source_url
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: case_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Watch removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /notifications:
+    get:
+      summary: Get notifications
+      description: Get all notifications for the current user
+      tags: [Notifications]
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+
+    patch:
+      summary: Update notification
+      description: Mark notification as read or update other fields
+      tags: [Notifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                is_read:
+                  type: boolean
+                mark_all_read:
+                  type: boolean
+                  description: "If true, marks all notifications as read"
+      responses:
+        '200':
+          description: Update confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+    delete:
+      summary: Delete notification(s)
+      description: Delete a single notification or all notifications
+      tags: [Notifications]
+      parameters:
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: "Notification ID to delete. If omitted with clear_all=true, deletes all."
+        - name: clear_all
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: "If true, deletes all notifications for the user"
+      responses:
+        '200':
+          description: Deletion confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean

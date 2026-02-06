@@ -14,7 +14,10 @@ import kotlinx.serialization.Serializable
 
 // Request models for Edge Functions
 @Serializable
-data class ListingsRequest(val date: String)
+data class ListingsRequest(
+    val date: String,
+    val court: String = "circuit-court"
+)
 
 @Serializable
 data class CasesRequest(val url: String)
@@ -41,6 +44,7 @@ data class CasesResponse(
 @Serializable
 data class ParsedCase(
     val listNumber: Int?,
+    val listSuffix: String? = null,
     val caseNumber: String?,
     val title: String,
     val parties: String?,
@@ -100,6 +104,7 @@ data class CaseItem(
     val id: Int,
     val listSourceUrl: String,
     val listNumber: Int?,
+    val listSuffix: String? = null,
     val caseNumber: String?,
     val title: String,
     val parties: String?,
@@ -111,12 +116,17 @@ data class CaseItem(
     val caseKey: String
         get() = caseNumber ?: "item-$listNumber"
 
+    // Display string for list position (e.g., "4", "4a", "10A")
+    val listPosition: String?
+        get() = listNumber?.let { "$it${listSuffix ?: ""}" }
+
     companion object {
         fun fromParsedCase(case: ParsedCase, index: Int, listSourceUrl: String): CaseItem {
             return CaseItem(
                 id = index,
                 listSourceUrl = listSourceUrl,
                 listNumber = case.listNumber,
+                listSuffix = case.listSuffix,
                 caseNumber = case.caseNumber,
                 title = case.title,
                 parties = case.parties

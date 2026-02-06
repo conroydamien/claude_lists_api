@@ -1,0 +1,73 @@
+@startuml ios
+title iOS App (Swift / SwiftUI)
+
+package "Views" {
+  [SignInView]
+  [ListsView]
+  [ItemsView]
+  [CommentsSheet]
+  [NotificationsView]
+}
+
+package "ViewModel" {
+  [MainViewModel]
+}
+
+package "Services" {
+  [CourtListsAPI]
+  [RealtimeClient]
+  [AuthManager]
+  [Configuration]
+}
+
+package "Models" {
+  [User]
+  [CourtList]
+  [CaseItem]
+  [Comment]
+  [AppNotification]
+}
+
+[CourtListsApp] as App
+
+App *-- AuthManager : @StateObject
+App *-- MainViewModel : @StateObject
+
+SignInView --> AuthManager : Google Sign-In
+ListsView --> MainViewModel : @EnvironmentObject
+ItemsView --> MainViewModel : @EnvironmentObject
+CommentsSheet --> MainViewModel : send/delete
+NotificationsView --> MainViewModel : mark read
+
+MainViewModel --> CourtListsAPI : REST calls
+MainViewModel --> RealtimeClient : realtime updates
+MainViewModel --> AuthManager : token refresh
+
+CourtListsAPI --> AuthManager : get token
+CourtListsAPI --> Configuration : URLs
+RealtimeClient --> Configuration : WS URL
+AuthManager --> Configuration : client IDs
+
+CourtListsAPI ..> CourtList : returns
+CourtListsAPI ..> CaseItem : returns
+CourtListsAPI ..> Comment : returns
+CourtListsAPI ..> AppNotification : returns
+
+note right of CourtListsAPI
+  URLSession
+  Bearer: Google ID token
+  Base: supabase.co/functions/v1
+end note
+
+note right of RealtimeClient
+  URLSessionWebSocketTask
+  Phoenix protocol
+  Reconnect with backoff
+end note
+
+note right of ListsView
+  **Missing: court type selector**
+  Only date + venue filters
+end note
+
+@enduml

@@ -40,6 +40,7 @@ export interface CasesRequest {
 /** Single parsed case from case list */
 export interface ParsedCase {
   listNumber: number | null; // Position in list (1, 2, 3...)
+  listSuffix: string | null; // Suffix like "a", "A", "b" for items like "4a", "10b"
   caseNumber: string | null; // e.g., "2024/1234", "CC123/2024"
   title: string;             // Full raw line text
   parties: string | null;    // Extracted party names

@@ -1,0 +1,93 @@
+@startuml backend
+title Backend (Supabase Edge Functions)
+
+package "Edge Functions" {
+  [/listings] as Listings
+  [/cases] as Cases
+  [/case-status] as Status
+  [/comments] as Comments
+  [/watched-cases] as Watch
+  [/notifications] as Notifs
+}
+
+package "Shared Modules" {
+  [auth.ts] as Auth
+  [parsing.ts] as Parse
+  [db.ts] as DB
+  [types.ts] as Types
+}
+
+database "PostgreSQL" {
+  [users]
+  [case_status] as cs
+  [comments] as ct
+  [watched_cases] as wc
+  [notifications] as nt
+}
+
+cloud "External" {
+  [courts.ie\nLegal Diary] as Courts
+  [Google OAuth\ntokeninfo] as Google
+}
+
+[Supabase Realtime] as RT
+
+Listings --> Auth
+Listings --> Parse : parseListingsPage
+Listings --> Courts : scrape HTML
+
+Cases --> Auth
+Cases --> Parse : parseDetailPage
+Cases --> Courts : scrape HTML
+
+Status --> Auth
+Status --> DB
+Status --> cs : read/write
+Status --> wc : find watchers
+Status --> nt : notify watchers (async)
+
+Comments --> Auth
+Comments --> DB
+Comments --> ct : CRUD
+Comments --> wc : find watchers
+Comments --> nt : notify watchers (async)
+
+Watch --> Auth
+Watch --> DB
+Watch --> wc : read/write
+
+Notifs --> Auth
+Notifs --> DB
+Notifs --> nt : read/update/delete
+
+Auth --> Google : validate token
+Auth --> users : upsert user
+DB --> cs
+DB --> ct
+DB --> wc
+DB --> nt
+
+RT --> cs : monitors
+RT --> ct : monitors
+RT --> nt : monitors
+RT --> wc : monitors
+
+note right of Parse
+  Court types:
+  circuit, high-court,
+  court-of-appeal, chancery,
+  bail, commercial, family
+  --
+  Listing formats:
+  5-col (Circuit)
+  4-col (High Court)
+  3-col (Court of Appeal)
+end note
+
+note right of Status
+  POST creates notifications
+  for watchers (async,
+  does not block response)
+end note
+
+@enduml
