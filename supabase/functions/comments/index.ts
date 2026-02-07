@@ -24,6 +24,7 @@ interface AddCommentRequest {
   case_number: string;
   content: string;
   urgent?: boolean;
+  list_number?: number;
 }
 
 interface DeleteCommentRequest {
@@ -130,6 +131,7 @@ serve(async (req) => {
                 type: 'comment',
                 list_source_url: body.list_source_url,
                 case_number: body.case_number,
+                list_number: body.list_number || null,
                 actor_id: user.id,
                 actor_name: authorName,
                 content: body.content.substring(0, 100),

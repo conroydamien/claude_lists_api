@@ -21,6 +21,7 @@ interface UpsertStatusRequest {
   list_source_url: string;
   case_number: string;
   done: boolean;
+  list_number?: number;
 }
 
 serve(async (req) => {
@@ -109,6 +110,7 @@ serve(async (req) => {
                 type: notificationType,
                 list_source_url: body.list_source_url,
                 case_number: body.case_number,
+                list_number: body.list_number || null,
                 actor_id: user.id,
                 actor_name: user.name || user.email || 'Someone',
               }));
