@@ -47,8 +47,11 @@ serve(async (req) => {
   const db = getDbClient();
   const url = new URL(req.url);
 
-  // Ensure user exists in database
-  await ensureUser(db, user);
+  // Ensure user exists in database and check if blocked
+  const blocked = await ensureUser(db, user);
+  if (blocked) {
+    return errorResponse('Account is blocked', 403);
+  }
 
   try {
     switch (req.method) {

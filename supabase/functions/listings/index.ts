@@ -9,10 +9,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   validateGoogleToken,
   extractBearerToken,
+  isUserBlocked,
   corsHeaders,
   errorResponse,
   handleCors,
 } from "../_shared/auth.ts";
+import { getDbClient } from "../_shared/db.ts";
 import {
   formatDateForCourtsIe,
   parseListingsPage,
@@ -36,6 +38,11 @@ serve(async (req) => {
     const user = await validateGoogleToken(token);
     if (!user) {
       return errorResponse("Invalid token", 401);
+    }
+
+    const db = getDbClient();
+    if (await isUserBlocked(db, user.id)) {
+      return errorResponse("Account is blocked", 403);
     }
 
     let date: string | null = null;

@@ -176,6 +176,16 @@ components:
         error:
           type: string
 
+  responses:
+    Forbidden:
+      description: Account is blocked
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Account is blocked"
+
 paths:
   /listings:
     get:

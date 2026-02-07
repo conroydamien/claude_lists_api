@@ -8,6 +8,7 @@ export interface AuthUser {
   googleId: string; // Original Google user ID (sub claim)
   email?: string;
   name?: string;
+  isBlocked?: boolean;
 }
 
 /**
@@ -124,8 +125,9 @@ export function handleCors(): Response {
 /**
  * Ensure user exists in public.users table.
  * Call this after validating the token to maintain user records.
+ * Returns true if the user is blocked.
  */
-export async function ensureUser(db: any, user: AuthUser): Promise<void> {
+export async function ensureUser(db: any, user: AuthUser): Promise<boolean> {
   const { error } = await db.from('users').upsert(
     {
       id: user.id,
@@ -138,6 +140,28 @@ export async function ensureUser(db: any, user: AuthUser): Promise<void> {
 
   if (error) {
     console.error('Failed to upsert user:', error);
-    // Don't throw - user record is nice to have but not critical for the request
   }
+
+  // Check if user is blocked
+  const { data } = await db
+    .from('users')
+    .select('is_blocked')
+    .eq('id', user.id)
+    .single();
+
+  return data?.is_blocked === true;
+}
+
+/**
+ * Check if a user is blocked without upserting.
+ * Use this in endpoints that don't need to maintain user records.
+ */
+export async function isUserBlocked(db: any, userId: string): Promise<boolean> {
+  const { data } = await db
+    .from('users')
+    .select('is_blocked')
+    .eq('id', userId)
+    .single();
+
+  return data?.is_blocked === true;
 }
