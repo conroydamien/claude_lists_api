@@ -149,6 +149,10 @@ components:
           type: string
         case_key:
           type: string
+        list_number:
+          type: integer
+          description: Position of the case in the court list
+          example: 4
         created_at:
           type: string
           format: date-time

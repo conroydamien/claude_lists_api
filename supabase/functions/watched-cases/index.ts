@@ -22,6 +22,7 @@ import { getDbClient } from '../_shared/db.ts';
 interface WatchRequest {
   list_source_url: string;
   case_number: string;
+  list_number?: number;
   source?: string;
 }
 
@@ -75,6 +76,7 @@ serve(async (req) => {
           user_id: user.id,
           list_source_url: body.list_source_url,
           case_number: body.case_number,
+          list_number: body.list_number ?? 0,
           source: body.source || 'manual',
         });
 
@@ -102,7 +104,8 @@ serve(async (req) => {
           .delete()
           .eq('user_id', user.id)
           .eq('list_source_url', body.list_source_url)
-          .eq('case_number', body.case_number);
+          .eq('case_number', body.case_number)
+          .eq('list_number', body.list_number ?? 0);
 
         if (error) throw error;
         return jsonResponse({ message: 'Unwatched case' });
