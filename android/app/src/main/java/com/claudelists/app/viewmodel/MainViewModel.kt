@@ -105,6 +105,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        viewModelScope.launch {
+            authManager.isLoading.collect { loading ->
+                _uiState.value = _uiState.value.copy(isLoading = loading)
+            }
+        }
+
+        viewModelScope.launch {
+            authManager.error.collect { error ->
+                if (error != null) {
+                    _uiState.value = _uiState.value.copy(error = error)
+                    authManager.clearError()
+                }
+            }
+        }
     }
 
     fun getSignInIntent(): android.content.Intent {
