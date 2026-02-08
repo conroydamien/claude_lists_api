@@ -550,11 +550,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val commentCounts = api.getCommentCounts(selectedList.sourceUrl, caseKeys)
 
                     val countMap = commentCounts.groupingBy { it.caseNumber }.eachCount()
+                    val urgentSet = commentCounts.filter { it.urgent }.map { it.caseNumber }.toSet()
 
                     val updatedItems = _uiState.value.items.map { item ->
                         val newCount = countMap[item.caseKey] ?: 0
-                        if (newCount != item.commentCount) {
-                            item.copy(commentCount = newCount)
+                        val newUrgent = item.caseKey in urgentSet
+                        if (newCount != item.commentCount || newUrgent != item.hasUrgent) {
+                            item.copy(commentCount = newCount, hasUrgent = newUrgent)
                         } else {
                             item
                         }
