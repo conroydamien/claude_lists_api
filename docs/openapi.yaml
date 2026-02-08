@@ -119,6 +119,10 @@ components:
           type: string
         case_key:
           type: string
+        list_number:
+          type: integer
+          description: Position of the case in the court list (part of primary key)
+          example: 4
         is_done:
           type: boolean
         updated_by:

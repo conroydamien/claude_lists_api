@@ -78,16 +78,19 @@ serve(async (req) => {
           return errorResponse('list_source_url, case_number, and done are required');
         }
 
+        const listNumber = body.list_number ?? 0;
+
         const { error } = await db.from('case_status').upsert(
           {
             list_source_url: body.list_source_url,
             case_number: body.case_number,
+            list_number: listNumber,
             done: body.done,
             updated_by: user.id,
             updated_at: new Date().toISOString(),
           },
           {
-            onConflict: 'list_source_url,case_number',
+            onConflict: 'list_source_url,case_number,list_number',
           }
         );
 
