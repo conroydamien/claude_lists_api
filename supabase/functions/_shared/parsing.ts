@@ -72,10 +72,27 @@ const partyIndicatorPattern = /(-V-|v\s|vs\.?\s|versus\s)/i;
 
 /**
  * Detect list type from content.
+ * Prioritizes the explicit "List Type:" header from courts.ie pages,
+ * then falls back to keyword matching.
  */
 export function detectListType(content: string): ListType {
   const upperContent = content.toUpperCase();
 
+  // Check explicit "List Type:" header first — most reliable
+  const listTypeMatch = upperContent.match(/LIST TYPE:\s*(.+)/);
+  if (listTypeMatch) {
+    const declared = listTypeMatch[1].trim();
+    if (declared.includes("BAIL")) return "bail";
+    if (declared.includes("COMMERCIAL")) return "commercial";
+    if (declared.includes("FAMILY")) return "family";
+    if (declared.includes("CHANCERY") || declared.includes("SEANSAIREACHT")) return "chancery";
+    if (declared.includes("COURT OF APPEAL")) return "court-of-appeal";
+    if (declared.includes("CIRCUIT") || declared.includes("CÚIRT CHUARDA")) return "circuit";
+    // Any other High Court list type (e.g. JUDICIAL REVIEW, NON-JURY, etc.)
+    return "high-court-general";
+  }
+
+  // Fallback: keyword matching in full content
   if (upperContent.includes("BAIL LIST") || upperContent.includes("BAIL APPLICATIONS")) {
     return "bail";
   }
@@ -240,16 +257,15 @@ export function parseCaseItem(line: string, listType: ListType = "high-court-gen
   }
 
   if (!caseMatch) {
-    // No case number found - only mark as case if it looks like one (has party indicator)
-    // This filters out practice directions like "1. Parties must comply..."
-    const isActualCase = looksLikeCase(remainder);
+    // No case number = not a case. Every case needs a case number to form
+    // a valid primary key (list_source_url, list_number, case_number).
     return {
-      listNumber: isActualCase ? listNumber : null,
-      listSuffix: isActualCase ? listSuffix : null,
+      listNumber: null,
+      listSuffix: null,
       caseNumber: null,
       title: remainder,
-      parties: isActualCase ? remainder : null,
-      isCase: isActualCase,
+      parties: null,
+      isCase: false,
     };
   }
 

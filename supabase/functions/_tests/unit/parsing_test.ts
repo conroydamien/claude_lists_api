@@ -123,12 +123,13 @@ Deno.test("parseCaseItem - High Court bail format (case number at end)", () => {
 });
 
 Deno.test("parseCaseItem - line with list number but no case number (with parties)", () => {
-  // Lines with list numbers but no case number are only cases if they look like parties
+  // No case number = not a case, even with party indicators.
+  // Every case needs a case number for a valid primary key.
   const result = parseCaseItem("5\tSMITH -V- JONES (Appeal)");
-  assertEquals(result.listNumber, 5);
+  assertEquals(result.listNumber, null);
   assertEquals(result.caseNumber, null);
   assertEquals(result.title, "SMITH -V- JONES (Appeal)");
-  assertEquals(result.isCase, true);
+  assertEquals(result.isCase, false);
 });
 
 Deno.test("parseCaseItem - line with list number but no case number (practice direction)", () => {
