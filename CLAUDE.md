@@ -61,6 +61,7 @@ If a backend change is unavoidable, complete ALL of these:
 
 - `circuit-court` - Circuit Court (5-column format: Date, Venue, Type, Subtitle, Updated)
 - `high-court` - High Court (4-column format: Date, Venue/Type, Subtitle, Updated)
+- `court-of-appeal` - Court of Appeal (3-column format: Date, Type, Updated)
 
 ## Case Number Patterns
 
@@ -76,6 +77,13 @@ Circuit Court:
 ## Key Concepts
 
 - **case_key**: Unique identifier for a case within a list, format: `{caseNumber}|{listNumber}` or just `{listNumber}`
+- **list_number**: The position of a case in the court list (e.g. case #4). Used across all tables to track cases separately by position:
+  - `case_status` — part of primary key `(list_source_url, case_number, list_number)`
+  - `comments` — stored on each comment, filterable via `?list_number=` query param
+  - `watched_cases` — part of unique constraint `(user_id, list_source_url, case_number, list_number)`
+  - `notifications` — stored for display purposes
+  - Defaults to `0` when not provided (backward compatible with older app versions)
+- **is_blocked**: Boolean on `users` table. When `true`, all endpoints return `403 "Account is blocked"`
 - **List comments**: Use case_key suffix `__LIST__` for comments on entire list (not specific case)
 - **Watchers**: Users can watch cases/lists to receive notifications on status changes or new comments
 
@@ -131,11 +139,11 @@ Open `ios/CourtLists/CourtLists.xcodeproj` in Xcode and build.
 
 ## Database Tables (Supabase)
 
-- `users` - User profiles (id UUID from Google, email, name)
-- `case_status` - Done/undone status per case
-- `comments` - Comments on cases and lists
-- `watched_cases` - User watch subscriptions
-- `notifications` - Push notification queue
+- `users` - User profiles (id UUID from Google, email, name, is_blocked)
+- `case_status` - Done/undone status per case, keyed by (list_source_url, case_number, list_number)
+- `comments` - Comments on cases and lists, includes list_number
+- `watched_cases` - User watch subscriptions, unique by (user_id, list_source_url, case_number, list_number)
+- `notifications` - Notification queue, includes list_number
 
 ## External Dependencies
 
