@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Court Lists API
   description: Backend API for the Court Lists mobile app - fetches and manages Irish court listings
-  version: 1.0.0
+  version: 1.1.0
 servers:
   - url: https://fbiissfiqgtlenxkjuwv.supabase.co/functions/v1
     description: Supabase Edge Functions
@@ -93,11 +93,10 @@ components:
       type: object
       properties:
         id:
-          type: string
-          format: uuid
+          type: integer
         list_source_url:
           type: string
-        case_key:
+        case_number:
           type: string
         list_number:
           type: integer
@@ -110,7 +109,7 @@ components:
           type: string
         content:
           type: string
-        is_urgent:
+        urgent:
           type: boolean
         created_at:
           type: string
@@ -121,13 +120,13 @@ components:
       properties:
         list_source_url:
           type: string
-        case_key:
+        case_number:
           type: string
         list_number:
           type: integer
           description: Position of the case in the court list (part of primary key)
           example: 4
-        is_done:
+        done:
           type: boolean
         updated_by:
           type: string
@@ -140,19 +139,21 @@ components:
       type: object
       properties:
         id:
-          type: string
-          format: uuid
+          type: integer
         user_id:
           type: string
           format: uuid
         list_source_url:
           type: string
-        case_key:
+        case_number:
           type: string
         list_number:
           type: integer
           description: Position of the case in the court list
           example: 4
+        source:
+          type: string
+          enum: [manual, auto]
         created_at:
           type: string
           format: date-time
@@ -161,27 +162,36 @@ components:
       type: object
       properties:
         id:
-          type: string
-          format: uuid
+          type: integer
         user_id:
           type: string
           format: uuid
         type:
           type: string
-          enum: [comment, status_change]
+          enum: [comment, status_done, status_undone]
         list_source_url:
           type: string
         case_number:
           type: string
-          nullable: true
         list_number:
           type: integer
           nullable: true
           description: Position of the case in the court list
           example: 4
-        message:
+        case_title:
           type: string
-        is_read:
+          nullable: true
+        actor_name:
+          type: string
+        actor_id:
+          type: string
+          format: uuid
+          nullable: true
+        content:
+          type: string
+          nullable: true
+          description: Comment content (for comment notifications)
+        read:
           type: boolean
         created_at:
           type: string
@@ -191,6 +201,12 @@ components:
       type: object
       properties:
         error:
+          type: string
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
           type: string
 
   responses:
@@ -245,6 +261,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
     post:
       summary: Get court listings (POST)
@@ -275,6 +293,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DiaryEntry'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /cases:
     get:
@@ -302,6 +322,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
     post:
       summary: Get cases from a list (POST)
@@ -325,6 +353,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CasesResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /case-status:
     get:
@@ -337,19 +367,40 @@ paths:
           required: true
           schema:
             type: string
+        - name: case_numbers
+          in: query
+          required: true
+          description: Comma-separated list of case numbers
+          schema:
+            type: string
+          example: "2024/1234,2024/5678"
       responses:
         '200':
-          description: Map of case_key to status
+          description: Array of case statuses
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
+                type: array
+                items:
                   $ref: '#/components/schemas/CaseStatus'
+        '400':
+          description: Missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
     post:
-      summary: Toggle case status
-      description: Toggle done/undone status for a case. Notifies watchers of the change.
+      summary: Upsert case status
+      description: Set done/undone status for a case. Notifies watchers of the change.
       tags: [Case Status]
       requestBody:
         required: true
@@ -357,28 +408,40 @@ paths:
           application/json:
             schema:
               type: object
-              required: [list_source_url, case_key]
+              required: [list_source_url, case_number, done]
               properties:
                 list_source_url:
                   type: string
-                case_key:
+                case_number:
                   type: string
-                  description: "Format: caseNumber|listNumber or listNumber if no case number"
-                is_done:
+                list_number:
+                  type: integer
+                  description: Position in the court list (defaults to 0)
+                  default: 0
+                done:
                   type: boolean
-                  description: "If omitted, toggles current state"
       responses:
         '200':
-          description: Updated status
+          description: Status updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CaseStatus'
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: "Status updated"
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /comments:
     get:
       summary: Get comments
-      description: Get comments for a specific case or list
+      description: Get comments for a specific case, or comment counts for multiple cases
       tags: [Comments]
       parameters:
         - name: list_source_url
@@ -386,21 +449,47 @@ paths:
           required: true
           schema:
             type: string
-        - name: case_key
+        - name: case_number
           in: query
-          required: true
+          required: false
           schema:
             type: string
-            description: "Use '__LIST__' for list-level comments"
+          description: Get full comments for a single case
+        - name: case_numbers
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated case numbers to get comment counts
+        - name: list_number
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by list position
       responses:
         '200':
-          description: List of comments
+          description: List of comments (case_number) or comment data for counts (case_numbers)
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/Comment'
+        '400':
+          description: Missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
     post:
       summary: Create comment
@@ -412,48 +501,66 @@ paths:
           application/json:
             schema:
               type: object
-              required: [list_source_url, case_key, content]
+              required: [list_source_url, case_number, content]
               properties:
                 list_source_url:
                   type: string
-                case_key:
+                case_number:
                   type: string
+                list_number:
+                  type: integer
+                  description: Position in the court list (defaults to 0)
+                  default: 0
                 content:
                   type: string
                   maxLength: 1000
-                is_urgent:
+                urgent:
                   type: boolean
                   default: false
                   description: "Marks comment with red hand icon for 'needs help'"
       responses:
         '201':
-          description: Created comment
+          description: Comment added
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Comment'
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: "Comment added"
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
     delete:
       summary: Delete comment
-      description: Delete a comment (only owner can delete)
+      description: Delete a comment (only owner can delete). Accepts JSON body.
       tags: [Comments]
-      parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: integer
       responses:
         '200':
-          description: Deletion confirmed
+          description: Comment deleted
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: "Comment deleted"
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /watched-cases:
     get:
@@ -469,10 +576,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/WatchedCase'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
     post:
       summary: Watch a case
-      description: Start watching a case or list for updates
+      description: Start watching a case or list for updates. Accepts JSON body.
       tags: [Watched Cases]
       requestBody:
         required: true
@@ -480,65 +595,106 @@ paths:
           application/json:
             schema:
               type: object
-              required: [list_source_url, case_key]
+              required: [list_source_url, case_number]
               properties:
                 list_source_url:
                   type: string
-                case_key:
+                case_number:
                   type: string
-                  description: "Use '__LIST__' suffix for watching entire lists"
+                list_number:
+                  type: integer
+                  description: Position in the court list (defaults to 0)
+                  default: 0
+                source:
+                  type: string
+                  enum: [manual, auto]
+                  default: manual
       responses:
+        '200':
+          description: Already watching
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: "Already watching"
         '201':
           description: Watch created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WatchedCase'
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: "Watching case"
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
     delete:
       summary: Unwatch a case
-      description: Stop watching a case or list
+      description: Stop watching a case or list. Accepts JSON body.
       tags: [Watched Cases]
-      parameters:
-        - name: list_source_url
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: case_key
-          in: query
-          required: true
-          schema:
-            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [list_source_url, case_number]
+              properties:
+                list_source_url:
+                  type: string
+                case_number:
+                  type: string
+                list_number:
+                  type: integer
+                  description: Position in the court list (defaults to 0)
+                  default: 0
       responses:
         '200':
           description: Watch removed
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: "Unwatched case"
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /notifications:
     get:
       summary: Get notifications
       description: Get all notifications for the current user
       tags: [Notifications]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+          description: Maximum number of notifications to return
       responses:
         '200':
-          description: List of notifications
+          description: List of notifications (newest first)
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/Notification'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
     patch:
-      summary: Update notification
-      description: Mark notification as read or update other fields
+      summary: Mark notification(s) as read
+      description: Mark a single notification or all notifications as read. Accepts JSON body.
       tags: [Notifications]
       requestBody:
         required: true
@@ -548,49 +704,56 @@ paths:
               type: object
               properties:
                 id:
-                  type: string
-                  format: uuid
-                is_read:
+                  type: integer
+                  description: Mark a single notification as read
+                all:
                   type: boolean
-                mark_all_read:
-                  type: boolean
-                  description: "If true, marks all notifications as read"
+                  description: If true, marks all notifications as read
       responses:
         '200':
           description: Update confirmed
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Missing id or all
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
     delete:
       summary: Delete notification(s)
-      description: Delete a single notification or all notifications
+      description: Delete a single notification or all notifications. Accepts JSON body.
       tags: [Notifications]
-      parameters:
-        - name: id
-          in: query
-          required: false
-          schema:
-            type: string
-            format: uuid
-          description: "Notification ID to delete. If omitted with clear_all=true, deletes all."
-        - name: clear_all
-          in: query
-          required: false
-          schema:
-            type: boolean
-          description: "If true, deletes all notifications for the user"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: Delete a single notification
+                all:
+                  type: boolean
+                  description: If true, deletes all notifications
       responses:
         '200':
           description: Deletion confirmed
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Missing id or all
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
