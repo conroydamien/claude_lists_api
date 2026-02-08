@@ -63,6 +63,7 @@ serve(async (req) => {
         const listSourceUrl = url.searchParams.get('list_source_url');
         const caseNumber = url.searchParams.get('case_number');
         const caseNumbers = url.searchParams.get('case_numbers'); // comma-separated for counts
+        const listNumber = url.searchParams.get('list_number');
 
         if (!listSourceUrl) {
           return errorResponse('list_source_url is required');
@@ -71,23 +72,33 @@ serve(async (req) => {
         if (caseNumbers) {
           // Get comment counts for multiple cases
           const numbers = caseNumbers.split(',');
-          const { data, error } = await db
+          let query = db
             .from('comments')
-            .select('case_number, urgent')
+            .select('case_number, list_number, urgent')
             .eq('list_source_url', listSourceUrl)
             .in('case_number', numbers);
 
+          if (listNumber !== null) {
+            query = query.eq('list_number', parseInt(listNumber));
+          }
+
+          const { data, error } = await query;
           if (error) throw error;
           return jsonResponse(data);
         } else if (caseNumber) {
           // Get comments for a specific case
-          const { data, error } = await db
+          let query = db
             .from('comments')
             .select('*')
             .eq('list_source_url', listSourceUrl)
             .eq('case_number', caseNumber)
             .order('created_at', { ascending: true });
 
+          if (listNumber !== null) {
+            query = query.eq('list_number', parseInt(listNumber));
+          }
+
+          const { data, error } = await query;
           if (error) throw error;
           return jsonResponse(data);
         } else {
@@ -107,6 +118,7 @@ serve(async (req) => {
         const { error } = await db.from('comments').insert({
           list_source_url: body.list_source_url,
           case_number: body.case_number,
+          list_number: body.list_number ?? 0,
           user_id: user.id,
           author_name: authorName,
           content: body.content,
